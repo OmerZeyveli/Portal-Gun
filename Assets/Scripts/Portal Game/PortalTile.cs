@@ -14,7 +14,7 @@ public class PortalTile : MonoBehaviour
     public Axis upAxis = Axis.PosY;
 
     [Header("Colliders")]
-    public Collider solidCollider; // yoksa Awake'te otomatik alır
+    public Collider solidCollider; // If not set, it will be auto-assigned in Awake.
 
     [Header("Rules")]
     public bool portalable = true;
@@ -42,7 +42,7 @@ public class PortalTile : MonoBehaviour
             Vector3 n = Normal;
             Vector3 u = transform.TransformDirection(LocalAxis(upAxis)).normalized;
 
-            // u ile n ortogonal değilse düzelt
+            // Ensure u is orthogonal to n.
             Vector3 r = Vector3.Cross(n, u).normalized;
             u = Vector3.Cross(r, n).normalized;
             return u;
@@ -77,7 +77,9 @@ public class PortalTile : MonoBehaviour
 
     public void ClearOccupied(PortalOccupancy who)
     {
-        if (occupant != who) return;
+        if (occupant != who)
+            return;
+
         occupant = null;
         if (solidCollider) solidCollider.enabled = true;
     }

@@ -14,13 +14,14 @@ public class PortalOccupancy : MonoBehaviour
 
     public bool Place(PortalTile t0, PortalTile t1)
     {
-        if (!t0 || !t1) return false;
+        if (!t0 || !t1)
+            return false;
 
-        // başka portal işgal etmiş mi?
+        // Prevent placing on tiles occupied by another portal or marked non-portalable.
         if (!t0.CanOccupy(this) || !t1.CanOccupy(this))
             return false;
 
-        // önce eskileri aç
+        // Release previously occupied tiles.
         Clear();
 
         a = t0;
@@ -28,6 +29,7 @@ public class PortalOccupancy : MonoBehaviour
 
         a.SetOccupied(this);
         b.SetOccupied(this);
+
         return true;
     }
 }

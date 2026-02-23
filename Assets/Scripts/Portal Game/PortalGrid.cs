@@ -5,15 +5,27 @@ public class PortalGrid : MonoBehaviour
 {
     public static PortalGrid Instance { get; private set; }
 
-    [Tooltip("Tile merkezleri arasındaki mesafe (genelde 1)")]
+    [Tooltip("Distance between tile centers (usually 1).")]
     public float cellSize = 1f;
 
     readonly Dictionary<Vector3Int, PortalTile> tiles = new();
 
     void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            enabled = false;
+            return;
+        }
+
         Instance = this;
         Rebuild();
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     public void Rebuild()
@@ -49,7 +61,7 @@ public class PortalGrid : MonoBehaviour
 
     public bool TryGetTile(Vector3Int coord, out PortalTile tile) => tiles.TryGetValue(coord, out tile);
 
-    // Dünya yönünü grid adımına çevir (±X, ±Y, ±Z)
+    // Converts a world direction to a grid step (±X, ±Y, ±Z).
     public static Vector3Int DirToStep(Vector3 dir)
     {
         dir = dir.normalized;
@@ -68,6 +80,7 @@ public class PortalGrid : MonoBehaviour
         if (!tile) return false;
 
         Vector3Int step = DirToStep(worldDir);
-        return TryGetTile(tile.Coord + step, out neighbor);
+        Vector3Int target = tile.Coord + step;
+        return TryGetTile(target, out neighbor);
     }
 }

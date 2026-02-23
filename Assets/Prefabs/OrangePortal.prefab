@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 6087495746098083626}
   - component: {fileID: 205773178154553286}
   - component: {fileID: 705882349402485685}
+  - component: {fileID: 8980628331924516038}
   m_Layer: 0
   m_Name: OrangePortal
   m_TagString: Untagged
@@ -102,6 +103,18 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 2, z: 1.5}
   m_Center: {x: 0, y: 1, z: 0}
+--- !u!114 &8980628331924516038
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 494312712611972635}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7db55115f9ad0d4cbac647e8bbeb50c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1269448803358284692
 GameObject:
   m_ObjectHideFlags: 0
