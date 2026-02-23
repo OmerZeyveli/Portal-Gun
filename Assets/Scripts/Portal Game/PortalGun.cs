@@ -84,7 +84,7 @@ public class PortalGun : MonoBehaviour
         Ray ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
         if (!Physics.Raycast(ray, out RaycastHit hit, maxDistance, portalableMask))
         {
-            Debug.LogError("[PortalGun] TryPlace failed: raycast did not hit anything in portalableMask. Check layers/mask/colliders.");
+            // Debug.LogError("[PortalGun] TryPlace failed: raycast did not hit anything in portalableMask. Check layers/mask/colliders.");
             return;
         }
 

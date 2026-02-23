@@ -34,6 +34,8 @@ public class FPSController : PortalTraveller {
     float lastGroundedTime;
     bool disabled;
 
+    static readonly Quaternion PortalFlip = Quaternion.Euler(0f, 180f, 0f);
+
     void Start () {
         cam = Camera.main;
         if (lockCursor) {
@@ -122,7 +124,10 @@ public class FPSController : PortalTraveller {
         smoothYaw += delta;
         transform.eulerAngles = Vector3.up * smoothYaw;
 
-        velocity = toPortal.TransformVector (fromPortal.InverseTransformVector (velocity));
+        // Convert velocity to from-portal local space, apply 180° Y flip, then convert to to-portal world space.
+        Vector3 vLocal = fromPortal.InverseTransformVector(velocity);
+        vLocal = PortalFlip * vLocal;
+        velocity = toPortal.TransformVector(vLocal);
 
         // conserve velocity.y
         verticalVelocity = velocity.y;

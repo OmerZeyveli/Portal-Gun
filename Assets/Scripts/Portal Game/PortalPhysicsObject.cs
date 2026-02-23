@@ -10,6 +10,8 @@ public class PortalPhysicsObject : PortalTraveller {
     public Color[] colors;
     static int i;
 
+    static readonly Quaternion PortalFlip = Quaternion.Euler(0f, 180f, 0f);
+
     void Awake () {
         rigidbody = GetComponent<Rigidbody> ();
         graphicsObject.GetComponent<MeshRenderer> ().material.color = colors[i];
@@ -21,7 +23,13 @@ public class PortalPhysicsObject : PortalTraveller {
 
     public override void Teleport (Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot) {
         base.Teleport (fromPortal, toPortal, pos, rot);
-        rigidbody.velocity = toPortal.TransformVector (fromPortal.InverseTransformVector (rigidbody.velocity));
-        rigidbody.angularVelocity = toPortal.TransformVector (fromPortal.InverseTransformVector (rigidbody.angularVelocity));
+
+        Vector3 vLocal = fromPortal.InverseTransformVector(rigidbody.velocity);
+        vLocal = PortalFlip * vLocal;
+        rigidbody.velocity = toPortal.TransformVector(vLocal);
+
+        Vector3 wLocal = fromPortal.InverseTransformVector(rigidbody.angularVelocity);
+        wLocal = PortalFlip * wLocal;
+        rigidbody.angularVelocity = toPortal.TransformVector(wLocal);
     }
 }

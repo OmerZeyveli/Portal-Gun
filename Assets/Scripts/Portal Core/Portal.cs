@@ -20,6 +20,8 @@ public class Portal : MonoBehaviour {
     List<PortalTraveller> trackedTravellers;
     MeshFilter screenMeshFilter;
 
+    static readonly Matrix4x4 Flip180Y = Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f));
+
     void Awake () {
         playerCam = Camera.main;
         portalCam = GetComponentInChildren<Camera> ();
@@ -38,7 +40,10 @@ public class Portal : MonoBehaviour {
         for (int i = 0; i < trackedTravellers.Count; i++) {
             PortalTraveller traveller = trackedTravellers[i];
             Transform travellerT = traveller.transform;
-            var m = linkedPortal.transform.localToWorldMatrix * transform.worldToLocalMatrix * travellerT.localToWorldMatrix;
+
+            // Apply a 180° flip around local Y so travelling through two portals facing the same
+            // direction still exits from the front side of the linked portal.
+            var m = linkedPortal.transform.localToWorldMatrix * Flip180Y * transform.worldToLocalMatrix * travellerT.localToWorldMatrix;
 
             Vector3 offsetFromPortal = travellerT.position - transform.position;
             int portalSide = System.Math.Sign (Vector3.Dot (offsetFromPortal, transform.forward));
@@ -93,7 +98,7 @@ public class Portal : MonoBehaviour {
                     break;
                 }
             }
-            localToWorldMatrix = transform.localToWorldMatrix * linkedPortal.transform.worldToLocalMatrix * localToWorldMatrix;
+            localToWorldMatrix = transform.localToWorldMatrix * Flip180Y * linkedPortal.transform.worldToLocalMatrix * localToWorldMatrix;
             int renderOrderIndex = recursionLimit - i - 1;
             renderPositions[renderOrderIndex] = localToWorldMatrix.GetColumn (3);
             renderRotations[renderOrderIndex] = localToWorldMatrix.rotation;
