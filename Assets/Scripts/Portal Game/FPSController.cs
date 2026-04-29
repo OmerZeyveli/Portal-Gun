@@ -10,6 +10,11 @@ public class FPSController : PortalTraveller {
     public float jumpForce = 8;
     public float gravity = 18;
 
+    [Header ("Portal Momentum")]
+    public float airMomentumDamping = 0.15f;
+    public float groundedMomentumDamping = 8f;
+    public float minMomentumSpeed = 0.05f;
+
     public bool lockCursor;
     public float mouseSensitivity = 10;
     public Vector2 pitchMinMax = new Vector2 (-40, 85);
@@ -25,12 +30,15 @@ public class FPSController : PortalTraveller {
     float yawSmoothV;
     float pitchSmoothV;
     float verticalVelocity;
+    Vector3 controlledPlanarVelocity;
+    Vector3 momentumVelocity;
     Vector3 velocity;
     Vector3 smoothV;
     Vector3 rotationSmoothVelocity;
     Vector3 currentRotation;
 
     bool jumping;
+    bool grounded;
     float lastGroundedTime;
     bool disabled;
 
@@ -73,17 +81,19 @@ public class FPSController : PortalTraveller {
         Vector3 worldInputDir = transform.TransformDirection (inputDir);
 
         float currentSpeed = (Input.GetKey (KeyCode.LeftShift)) ? runSpeed : walkSpeed;
-        // Movement stays world-upright; portals only change momentum and facing.
+        // Keep input movement separate so smoothing cannot erase portal fling speed.
         Vector3 targetVelocity = Vector3.ProjectOnPlane (worldInputDir, Vector3.up).normalized * currentSpeed;
-        Vector3 planarVelocity = Vector3.ProjectOnPlane (velocity, Vector3.up);
-        planarVelocity = Vector3.SmoothDamp (planarVelocity, targetVelocity, ref smoothV, smoothMoveTime);
+        controlledPlanarVelocity = Vector3.SmoothDamp (controlledPlanarVelocity, targetVelocity, ref smoothV, smoothMoveTime);
         smoothV = Vector3.ProjectOnPlane (smoothV, Vector3.up);
 
         verticalVelocity -= gravity * Time.deltaTime;
-        velocity = planarVelocity + Vector3.up * verticalVelocity;
+        ApplyMomentumDamping ();
+
+        velocity = GetTotalVelocity ();
 
         var flags = controller.Move (velocity * Time.deltaTime);
-        if ((flags & CollisionFlags.Below) != 0) {
+        grounded = (flags & CollisionFlags.Below) != 0;
+        if (grounded) {
             jumping = false;
             lastGroundedTime = Time.time;
             if (verticalVelocity < 0f) {
@@ -93,13 +103,14 @@ public class FPSController : PortalTraveller {
         if ((flags & CollisionFlags.Above) != 0 && verticalVelocity > 0f) {
             verticalVelocity = 0f;
         }
-        velocity = Vector3.ProjectOnPlane (velocity, Vector3.up) + Vector3.up * verticalVelocity;
+        velocity = GetTotalVelocity ();
 
         if (Input.GetKeyDown (KeyCode.Space)) {
             float timeSinceLastTouchedGround = Time.time - lastGroundedTime;
-            if (controller.isGrounded || (!jumping && timeSinceLastTouchedGround < 0.15f)) {
+            if (grounded || (!jumping && timeSinceLastTouchedGround < 0.15f)) {
                 jumping = true;
                 verticalVelocity = jumpForce;
+                velocity = GetTotalVelocity ();
             }
         }
 
@@ -141,22 +152,60 @@ public class FPSController : PortalTraveller {
             SetUprightLookRotation (transformedForward, transformedUp);
         }
 
-        if (useHorizontalDelta) {
-            // Rotate floor-plane momentum and flip vertical momentum through the portal.
-            Vector3 planarVelocity = Vector3.ProjectOnPlane (velocity, Vector3.up);
-            float oldVerticalVelocity = Vector3.Dot (velocity, Vector3.up);
-            velocity = (horizontalDelta * planarVelocity) - Vector3.up * oldVerticalVelocity;
-        } else {
-            // Convert velocity to from-portal local space, apply 180° Y flip, then convert to to-portal world space.
-            Vector3 vLocal = fromPortal.InverseTransformVector(velocity);
-            vLocal = PortalFlip * vLocal;
-            velocity = toPortal.TransformVector(vLocal);
-        }
-        smoothV = Vector3.zero;
-
-        verticalVelocity = Vector3.Dot (velocity, Vector3.up);
+        Vector3 transformedVelocity = TransformPortalVelocity (fromPortal, toPortal, GetTotalVelocity (), useHorizontalDelta, horizontalDelta);
+        Vector3 transformedControlledVelocity = TransformPortalVelocity (fromPortal, toPortal, controlledPlanarVelocity, useHorizontalDelta, horizontalDelta);
+        SetPortalVelocity (transformedVelocity, transformedControlledVelocity);
 
         Physics.SyncTransforms ();
+    }
+
+    Vector3 GetTotalVelocity () {
+        return controlledPlanarVelocity + momentumVelocity + Vector3.up * verticalVelocity;
+    }
+
+    void ApplyMomentumDamping () {
+        if (momentumVelocity.sqrMagnitude <= 0f) {
+            return;
+        }
+
+        // Air damping is low for fling; grounded damping removes sliding after landing.
+        float damping = grounded ? groundedMomentumDamping : airMomentumDamping;
+        if (damping > 0f) {
+            float blend = 1f - Mathf.Exp (-damping * Time.deltaTime);
+            momentumVelocity = Vector3.Lerp (momentumVelocity, Vector3.zero, blend);
+        }
+
+        if (momentumVelocity.sqrMagnitude < minMomentumSpeed * minMomentumSpeed) {
+            momentumVelocity = Vector3.zero;
+        }
+    }
+
+    Vector3 TransformPortalVelocity (Transform fromPortal, Transform toPortal, Vector3 sourceVelocity, bool useHorizontalDelta, Quaternion horizontalDelta) {
+        if (useHorizontalDelta) {
+            Vector3 planarVelocity = Vector3.ProjectOnPlane (sourceVelocity, Vector3.up);
+            float sourceVerticalVelocity = Vector3.Dot (sourceVelocity, Vector3.up);
+            return (horizontalDelta * planarVelocity) - Vector3.up * sourceVerticalVelocity;
+        }
+
+        Vector3 vLocal = fromPortal.InverseTransformVector (sourceVelocity);
+        vLocal = PortalFlip * vLocal;
+        return toPortal.TransformVector (vLocal);
+    }
+
+    void SetPortalVelocity (Vector3 transformedVelocity, Vector3 transformedControlledVelocity) {
+        verticalVelocity = Vector3.Dot (transformedVelocity, Vector3.up);
+
+        // Only the transformed input part stays controlled; extra speed becomes portal momentum.
+        controlledPlanarVelocity = Vector3.ProjectOnPlane (transformedControlledVelocity, Vector3.up);
+        momentumVelocity = Vector3.ProjectOnPlane (transformedVelocity, Vector3.up) - controlledPlanarVelocity;
+
+        if (momentumVelocity.sqrMagnitude < minMomentumSpeed * minMomentumSpeed) {
+            momentumVelocity = Vector3.zero;
+        }
+
+        smoothV = Vector3.zero;
+        grounded = false;
+        velocity = GetTotalVelocity ();
     }
 
     void SetUprightLookRotation (Vector3 forward, Vector3 up) {

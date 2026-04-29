@@ -53,6 +53,9 @@ MonoBehaviour:
   smoothMoveTime: 0.15
   jumpForce: 8
   gravity: 18
+  airMomentumDamping: 0.3
+  groundedMomentumDamping: 8
+  minMomentumSpeed: 0.05
   lockCursor: 1
   mouseSensitivity: 11
   pitchMinMax: {x: -40, y: 85}
