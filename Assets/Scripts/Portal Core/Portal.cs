@@ -108,6 +108,7 @@ public class Portal : MonoBehaviour {
         }
 
         // Hide screen so that camera can see through portal
+        var previousShadowMode = screen.shadowCastingMode;
         screen.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
         linkedPortal.screen.material.SetInt ("displayMask", 0);
 
@@ -123,7 +124,7 @@ public class Portal : MonoBehaviour {
         }
 
         // Unhide objects hidden at start of render
-        screen.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+        screen.shadowCastingMode = previousShadowMode;
     }
 
     void HandleClipping () {

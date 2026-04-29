@@ -4,6 +4,11 @@ using UnityEngine;
 
 public class PortalOpenVfx : MonoBehaviour
 {
+    const string PortalVisualRootName = "Portal Visuals";
+    const string RimCoreName = "Rim Core";
+    const string OuterHaloName = "Outer Halo";
+    const string InnerEdgeName = "Inner Edge";
+
     public float duration = 0.28f;
     public float framePulseScale = 0.08f;
     public float ringWidth = 0.055f;
@@ -20,7 +25,6 @@ public class PortalOpenVfx : MonoBehaviour
     Portal portal;
     Transform screenTransform;
     Coroutine pulseRoutine;
-    bool cachedVisuals;
 
     void Awake()
     {
@@ -29,14 +33,13 @@ public class PortalOpenVfx : MonoBehaviour
 
     public void PlayOpen(Color color)
     {
-        CacheVisuals();
-
         if (pulseRoutine != null)
         {
             StopCoroutine(pulseRoutine);
             RestoreVisualScales();
         }
 
+        CacheVisuals();
         pulseRoutine = StartCoroutine(PulseVisualsRoutine());
         StartCoroutine(RingRoutine(color));
         SpawnParticles(color);
@@ -44,12 +47,9 @@ public class PortalOpenVfx : MonoBehaviour
 
     void CacheVisuals()
     {
-        if (cachedVisuals)
-        {
-            return;
-        }
+        pulseTransforms.Clear();
+        baseScales.Clear();
 
-        cachedVisuals = true;
         portal = GetComponent<Portal>();
         screenTransform = portal && portal.screen ? portal.screen.transform : null;
 
@@ -62,7 +62,7 @@ public class PortalOpenVfx : MonoBehaviour
             }
 
             Transform target = renderer.transform;
-            if (target == transform || pulseTransforms.Contains(target) || target.GetComponent<Collider>())
+            if (target == transform || pulseTransforms.Contains(target) || target.GetComponent<Collider>() || IsGeneratedEnergyVisual(target))
             {
                 continue;
             }
@@ -70,6 +70,16 @@ public class PortalOpenVfx : MonoBehaviour
             pulseTransforms.Add(target);
             baseScales.Add(target.localScale);
         }
+    }
+
+    static bool IsGeneratedEnergyVisual(Transform target)
+    {
+        if (!target.parent || target.parent.name != PortalVisualRootName)
+        {
+            return false;
+        }
+
+        return target.name == RimCoreName || target.name == OuterHaloName || target.name == InnerEdgeName;
     }
 
     IEnumerator PulseVisualsRoutine()

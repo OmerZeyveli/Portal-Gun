@@ -22258,11 +22258,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1535381019623673787, guid: 5101aee443b6c4e028aae23d799c5fa4,
-        type: 3}
-      propertyPath: airMomentumDamping
-      value: 0.3
-      objectReference: {fileID: 0}
     - target: {fileID: 4574353839283447667, guid: 5101aee443b6c4e028aae23d799c5fa4,
         type: 3}
       propertyPath: bluePortal
