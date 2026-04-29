@@ -17,7 +17,26 @@ public class PortalGun : MonoBehaviour
     [Tooltip("If the portal prefab pivot is at its base, shift the portal down along portalUp by this many tile sizes.")]
     public float pivotDownTiles = 1f;
 
+    [Header("Visuals")]
+    public bool autoCreateVisuals = true;
+    public PortalGunViewModel viewModel;
+    public PortalShotVfx shotVfx;
+    public PortalOpenVfx blueOpenVfx;
+    public PortalOpenVfx orangeOpenVfx;
+    public Color bluePortalColor = new Color(0.15f, 0.55f, 1f, 1f);
+    public Color orangePortalColor = new Color(1f, 0.35f, 0.05f, 1f);
+
     PortalGrid grid;
+    bool viewModelInitialized;
+
+    struct PortalPlacementResult
+    {
+        public bool success;
+        public Vector3 hitPoint;
+        public Vector3 hitNormal;
+        public Vector3 portalPosition;
+        public Quaternion portalRotation;
+    }
 
     void Awake()
     {
@@ -26,6 +45,7 @@ public class PortalGun : MonoBehaviour
 
         EnsureOccupancy(bluePortal);
         EnsureOccupancy(orangePortal);
+        EnsureVisuals();
     }
 
     void Start()
@@ -37,6 +57,8 @@ public class PortalGun : MonoBehaviour
             if (grid == null)
                 grid = FindObjectOfType<PortalGrid>(true);
         }
+
+        EnsureVisuals();
     }
 
     void EnsureOccupancy(Portal p)
@@ -59,45 +81,139 @@ public class PortalGun : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetMouseButtonDown(0)) TryPlace(bluePortal);
-        if (Input.GetMouseButtonDown(1)) TryPlace(orangePortal);
+        if (Input.GetMouseButtonDown(0)) FirePortal(bluePortal, bluePortalColor);
+        if (Input.GetMouseButtonDown(1)) FirePortal(orangePortal, orangePortalColor);
     }
 
-    void TryPlace(Portal portal)
+    void EnsureVisuals()
     {
+        if (!cam) cam = Camera.main;
+
+        if (autoCreateVisuals && !viewModel && cam)
+        {
+            viewModel = cam.GetComponentInChildren<PortalGunViewModel>(true);
+            if (!viewModel)
+            {
+                GameObject viewModelObject = new GameObject("PortalGunViewModel");
+                viewModel = viewModelObject.AddComponent<PortalGunViewModel>();
+            }
+        }
+
+        if (viewModel && !viewModelInitialized)
+        {
+            viewModel.Initialize(cam, bluePortalColor);
+            viewModelInitialized = true;
+        }
+
+        if (autoCreateVisuals && !shotVfx)
+        {
+            shotVfx = GetComponent<PortalShotVfx>();
+            if (!shotVfx)
+                shotVfx = gameObject.AddComponent<PortalShotVfx>();
+        }
+
+        if (autoCreateVisuals)
+        {
+            blueOpenVfx = EnsureOpenVfx(bluePortal, blueOpenVfx);
+            orangeOpenVfx = EnsureOpenVfx(orangePortal, orangeOpenVfx);
+        }
+    }
+
+    PortalOpenVfx EnsureOpenVfx(Portal portal, PortalOpenVfx current)
+    {
+        if (current || !portal)
+            return current;
+
+        var openVfx = portal.GetComponent<PortalOpenVfx>();
+        if (!openVfx)
+            openVfx = portal.gameObject.AddComponent<PortalOpenVfx>();
+
+        return openVfx;
+    }
+
+    void FirePortal(Portal portal, Color color)
+    {
+        EnsureVisuals();
+
+        if (viewModel)
+            viewModel.PlayFire(color);
+
+        PortalPlacementResult result;
+        bool placed = TryPlace(portal, out result);
+        Vector3 muzzlePosition = GetMuzzlePosition();
+        PortalOpenVfx openVfx = portal == bluePortal ? blueOpenVfx : orangeOpenVfx;
+
+        if (shotVfx)
+            shotVfx.PlayShot(muzzlePosition, result.hitPoint, color, placed);
+
+        if (placed && openVfx)
+            openVfx.PlayOpen(color);
+    }
+
+    Vector3 GetMuzzlePosition()
+    {
+        if (viewModel)
+            return viewModel.Muzzle.position;
+
+        if (cam)
+            return cam.transform.position + cam.transform.forward * 0.5f;
+
+        return transform.position + transform.forward * 0.5f;
+    }
+
+    PortalPlacementResult CreateDefaultResult()
+    {
+        Ray ray = cam ? cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f)) : new Ray(transform.position, transform.forward);
+        return new PortalPlacementResult
+        {
+            success = false,
+            hitPoint = ray.origin + ray.direction * maxDistance,
+            hitNormal = -ray.direction,
+            portalPosition = Vector3.zero,
+            portalRotation = Quaternion.identity
+        };
+    }
+
+    bool TryPlace(Portal portal, out PortalPlacementResult result)
+    {
+        result = CreateDefaultResult();
+
         if (!portal)
         {
             Debug.LogError("[PortalGun] TryPlace failed: portal reference is null.");
-            return;
+            return false;
         }
         if (!cam)
         {
             Debug.LogError("[PortalGun] TryPlace failed: camera reference is null.");
-            return;
+            return false;
         }
         if (!EnsureGrid())
         {
             Debug.LogError("[PortalGun] TryPlace failed: PortalGrid not found.");
-            return;
+            return false;
         }
 
         Ray ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
         if (!Physics.Raycast(ray, out RaycastHit hit, maxDistance, portalableMask))
         {
             // Debug.LogError("[PortalGun] TryPlace failed: raycast did not hit anything in portalableMask. Check layers/mask/colliders.");
-            return;
+            return false;
         }
+
+        result.hitPoint = hit.point;
+        result.hitNormal = hit.normal.normalized;
 
         var tile = hit.collider.GetComponentInParent<PortalTile>();
         if (!tile)
         {
             Debug.LogError($"[PortalGun] TryPlace failed: hit '{hit.collider.name}' but no PortalTile found in parent hierarchy.");
-            return;
+            return false;
         }
         if (!tile.portalable)
         {
             Debug.LogError($"[PortalGun] TryPlace failed: tile '{tile.name}' is marked non-portalable.");
-            return;
+            return false;
         }
 
         Vector3 normal = hit.normal.normalized;
@@ -115,7 +231,7 @@ public class PortalGun : MonoBehaviour
             if (!grid.TryGetNeighbor(tile, -preferredDir, out neighbor))
             {
                 Debug.LogError($"[PortalGun] TryPlace failed: no adjacent tile found for 2-tile portal. tile='{tile.name}' coord={tile.Coord} preferredDir={preferredDir}");
-                return;
+                return false;
             }
         }
 
@@ -127,12 +243,12 @@ public class PortalGun : MonoBehaviour
         if (!occ)
         {
             Debug.LogError($"[PortalGun] TryPlace failed: portal '{portal.name}' is missing PortalOccupancy component.");
-            return;
+            return false;
         }
         if (!occ.Place(bottom, top))
         {
             Debug.LogError($"[PortalGun] TryPlace failed: tiles are occupied or cannot be used. bottom='{bottom.name}' top='{top.name}'");
-            return;
+            return false;
         }
 
         Vector3 center = (bottom.transform.position + top.transform.position) * 0.5f;
@@ -147,7 +263,11 @@ public class PortalGun : MonoBehaviour
         if (Vector3.Dot(rot * Vector3.forward, normal) < 0f)
             rot = Quaternion.AngleAxis(180f, normal) * rot;
 
-        portal.transform.SetPositionAndRotation(center + normal * forwardOffset, rot);
+        result.success = true;
+        result.portalPosition = center + normal * forwardOffset;
+        result.portalRotation = rot;
+        portal.transform.SetPositionAndRotation(result.portalPosition, result.portalRotation);
+        return true;
     }
 
     /// <summary>
