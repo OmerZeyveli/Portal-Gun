@@ -73,18 +73,26 @@ public class FPSController : PortalTraveller {
         Vector3 worldInputDir = transform.TransformDirection (inputDir);
 
         float currentSpeed = (Input.GetKey (KeyCode.LeftShift)) ? runSpeed : walkSpeed;
-        Vector3 targetVelocity = worldInputDir * currentSpeed;
-        velocity = Vector3.SmoothDamp (velocity, targetVelocity, ref smoothV, smoothMoveTime);
+        Vector3 targetVelocity = Vector3.ProjectOnPlane (worldInputDir, Vector3.up).normalized * currentSpeed;
+        Vector3 planarVelocity = Vector3.ProjectOnPlane (velocity, Vector3.up);
+        planarVelocity = Vector3.SmoothDamp (planarVelocity, targetVelocity, ref smoothV, smoothMoveTime);
+        smoothV = Vector3.ProjectOnPlane (smoothV, Vector3.up);
 
         verticalVelocity -= gravity * Time.deltaTime;
-        velocity = new Vector3 (velocity.x, verticalVelocity, velocity.z);
+        velocity = planarVelocity + Vector3.up * verticalVelocity;
 
         var flags = controller.Move (velocity * Time.deltaTime);
-        if (flags == CollisionFlags.Below) {
+        if ((flags & CollisionFlags.Below) != 0) {
             jumping = false;
             lastGroundedTime = Time.time;
-            verticalVelocity = 0;
+            if (verticalVelocity < 0f) {
+                verticalVelocity = 0f;
+            }
         }
+        if ((flags & CollisionFlags.Above) != 0 && verticalVelocity > 0f) {
+            verticalVelocity = 0f;
+        }
+        velocity = Vector3.ProjectOnPlane (velocity, Vector3.up) + Vector3.up * verticalVelocity;
 
         if (Input.GetKeyDown (KeyCode.Space)) {
             float timeSinceLastTouchedGround = Time.time - lastGroundedTime;
@@ -118,21 +126,93 @@ public class FPSController : PortalTraveller {
     public override void Teleport (Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot) {
         transform.position = pos;
 
-        Vector3 eulerRot = rot.eulerAngles;
-        float delta = Mathf.DeltaAngle (smoothYaw, eulerRot.y);
-        yaw += delta;
-        smoothYaw += delta;
-        transform.eulerAngles = Vector3.up * smoothYaw;
+        Quaternion portalDelta = toPortal.rotation * PortalFlip * Quaternion.Inverse (fromPortal.rotation);
+        bool sameFacingHorizontalPortals = IsHorizontalPortal (fromPortal) && IsHorizontalPortal (toPortal) && Vector3.Dot (fromPortal.forward, toPortal.forward) > 0.75f;
+        Quaternion horizontalDelta = Quaternion.identity;
+        bool useHorizontalDelta = sameFacingHorizontalPortals && TryGetHorizontalPortalDelta (fromPortal, toPortal, out horizontalDelta);
 
-        // Convert velocity to from-portal local space, apply 180° Y flip, then convert to to-portal world space.
-        Vector3 vLocal = fromPortal.InverseTransformVector(velocity);
-        vLocal = PortalFlip * vLocal;
-        velocity = toPortal.TransformVector(vLocal);
+        if (useHorizontalDelta) {
+            SetUprightLookRotation (horizontalDelta * transform.forward, Vector3.up, smoothPitch);
+        } else {
+            Vector3 transformedForward = portalDelta * cam.transform.forward;
+            Vector3 transformedUp = portalDelta * cam.transform.up;
+            SetUprightLookRotation (transformedForward, transformedUp);
+        }
 
-        // conserve velocity.y
-        verticalVelocity = velocity.y;
+        if (useHorizontalDelta) {
+            Vector3 planarVelocity = Vector3.ProjectOnPlane (velocity, Vector3.up);
+            float oldVerticalVelocity = Vector3.Dot (velocity, Vector3.up);
+            velocity = (horizontalDelta * planarVelocity) - Vector3.up * oldVerticalVelocity;
+        } else {
+            // Convert velocity to from-portal local space, apply 180° Y flip, then convert to to-portal world space.
+            Vector3 vLocal = fromPortal.InverseTransformVector(velocity);
+            vLocal = PortalFlip * vLocal;
+            velocity = toPortal.TransformVector(vLocal);
+        }
+        smoothV = Vector3.zero;
+
+        verticalVelocity = Vector3.Dot (velocity, Vector3.up);
 
         Physics.SyncTransforms ();
+    }
+
+    void SetUprightLookRotation (Vector3 forward, Vector3 up) {
+        float targetPitch = -Mathf.Asin (Mathf.Clamp (Vector3.Dot (forward.normalized, Vector3.up), -1f, 1f)) * Mathf.Rad2Deg;
+        SetUprightLookRotation (forward, up, targetPitch);
+    }
+
+    void SetUprightLookRotation (Vector3 forward, Vector3 up, float targetPitch) {
+        const float minLookSqrMagnitude = 1e-6f;
+        const float minFlatLookSqrMagnitude = 1e-4f;
+
+        if (forward.sqrMagnitude < minLookSqrMagnitude) {
+            return;
+        }
+
+        forward.Normalize ();
+
+        pitch = Mathf.Clamp (targetPitch, pitchMinMax.x, pitchMinMax.y);
+        smoothPitch = pitch;
+
+        Vector3 flatForward = Vector3.ProjectOnPlane (forward, Vector3.up);
+        if (flatForward.sqrMagnitude < minFlatLookSqrMagnitude) {
+            Vector3 flatUp = Vector3.ProjectOnPlane (up, Vector3.up);
+            if (flatUp.sqrMagnitude > minFlatLookSqrMagnitude) {
+                flatForward = (Vector3.Dot (forward, Vector3.up) > 0f) ? -flatUp : flatUp;
+            }
+        }
+
+        if (flatForward.sqrMagnitude > minLookSqrMagnitude) {
+            flatForward.Normalize ();
+            float targetYaw = Mathf.Atan2 (flatForward.x, flatForward.z) * Mathf.Rad2Deg;
+            float yawDelta = Mathf.DeltaAngle (smoothYaw, targetYaw);
+            smoothYaw += yawDelta;
+        }
+
+        yaw = smoothYaw;
+        yawSmoothV = 0f;
+        pitchSmoothV = 0f;
+
+        transform.eulerAngles = Vector3.up * smoothYaw;
+        cam.transform.localEulerAngles = Vector3.right * smoothPitch;
+    }
+
+    bool IsHorizontalPortal (Transform portal) {
+        return Mathf.Abs (Vector3.Dot (portal.forward, Vector3.up)) > 0.75f;
+    }
+
+    bool TryGetHorizontalPortalDelta (Transform fromPortal, Transform toPortal, out Quaternion delta) {
+        Vector3 fromUp = Vector3.ProjectOnPlane (fromPortal.up, Vector3.up);
+        Vector3 toUp = Vector3.ProjectOnPlane (toPortal.up, Vector3.up);
+
+        if (fromUp.sqrMagnitude < 1e-6f || toUp.sqrMagnitude < 1e-6f) {
+            delta = Quaternion.identity;
+            return false;
+        }
+
+        float yawDelta = Vector3.SignedAngle (fromUp.normalized, toUp.normalized, Vector3.up);
+        delta = Quaternion.AngleAxis (yawDelta, Vector3.up);
+        return true;
     }
 
 }
