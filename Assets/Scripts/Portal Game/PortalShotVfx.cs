@@ -3,13 +3,31 @@ using UnityEngine;
 
 public class PortalShotVfx : MonoBehaviour
 {
+    [Header("Timing")]
+    [Tooltip("Time for the beam head to travel from the muzzle to the hit point.")]
     public float travelTime = 0.08f;
+
+    [Tooltip("Time for the beam to fade after it reaches the hit point.")]
     public float fadeTime = 0.12f;
+
+    [Tooltip("Maximum visible length of the beam trail while it travels.")]
     public float trailLength = 4f;
+
+    [Header("Beam Width")]
+    [Tooltip("Beam width for shots that successfully place a portal.")]
     public float validWidth = 0.075f;
+
+    [Tooltip("Beam width for shots that hit something but cannot place a portal.")]
     public float invalidWidth = 0.055f;
+
+    [Header("Light")]
+    [Tooltip("Range of the temporary point light that follows the beam head.")]
     public float lightRange = 2.2f;
+
+    [Tooltip("Temporary light intensity for successful portal shots.")]
     public float validLightIntensity = 2.8f;
+
+    [Tooltip("Temporary light intensity for non-portalable hits.")]
     public float invalidLightIntensity = 1.6f;
 
     Material lineMaterial;
@@ -24,6 +42,7 @@ public class PortalShotVfx : MonoBehaviour
         GameObject shot = new GameObject(success ? "Portal Shot" : "Portal Shot Failed");
         shot.transform.SetParent(transform, true);
 
+        // The line renderer is created per shot so overlapping rapid shots fade independently.
         LineRenderer line = shot.AddComponent<LineRenderer>();
         line.useWorldSpace = true;
         line.positionCount = 2;

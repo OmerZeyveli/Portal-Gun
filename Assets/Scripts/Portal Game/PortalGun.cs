@@ -2,14 +2,24 @@ using UnityEngine;
 
 public class PortalGun : MonoBehaviour
 {
+    [Header("References")]
+    [Tooltip("Camera used to aim from the center of the screen. Defaults to Camera.main if empty.")]
     public Camera cam;
+
+    [Tooltip("Layers that are allowed to receive portals. Placement still also requires a PortalTile.")]
     public LayerMask portalableMask;
 
+    [Tooltip("Blue portal instance that gets moved when left-click places successfully.")]
     public Portal bluePortal;
+
+    [Tooltip("Orange portal instance that gets moved when right-click places successfully.")]
     public Portal orangePortal;
 
     [Header("Placement")]
+    [Tooltip("Maximum distance for both placement and shot feedback raycasts.")]
     public float maxDistance = 200f;
+
+    [Tooltip("Layers the shot beam can hit for feedback. Use this to show lasers on normal walls too.")]
     public LayerMask shotMask = Physics.DefaultRaycastLayers;
 
     [Tooltip("How far the portal should sit in front of the hit surface (meters).")]
@@ -19,12 +29,25 @@ public class PortalGun : MonoBehaviour
     public float pivotDownTiles = 1f;
 
     [Header("Visuals")]
+    [Tooltip("Creates missing view-model, shot, and open VFX helpers at runtime.")]
     public bool autoCreateVisuals = true;
+
+    [Tooltip("Optional first-person portal gun model/VFX controller.")]
     public PortalGunViewModel viewModel;
+
+    [Tooltip("Beam/tracer VFX played for every shot hit or miss.")]
     public PortalShotVfx shotVfx;
+
+    [Tooltip("Open burst played on the blue portal after successful placement.")]
     public PortalOpenVfx blueOpenVfx;
+
+    [Tooltip("Open burst played on the orange portal after successful placement.")]
     public PortalOpenVfx orangeOpenVfx;
+
+    [Tooltip("Color used by blue shot/open/portal visuals.")]
     public Color bluePortalColor = new Color(0.15f, 0.55f, 1f, 1f);
+
+    [Tooltip("Color used by orange shot/open/portal visuals.")]
     public Color orangePortalColor = new Color(1f, 0.35f, 0.05f, 1f);
 
     PortalGrid grid;
@@ -32,6 +55,7 @@ public class PortalGun : MonoBehaviour
 
     struct PortalPlacementResult
     {
+        // hitPoint is always populated from the broad shot raycast, even when placement fails.
         public bool success;
         public Vector3 hitPoint;
         public Vector3 hitNormal;
@@ -196,6 +220,8 @@ public class PortalGun : MonoBehaviour
         }
 
         Ray ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
+        // First raycast against shotMask so non-portalable walls still get a responsive beam.
+        // Actual placement is gated below by portalableMask, PortalTile, and occupancy checks.
         if (!Physics.Raycast(ray, out RaycastHit hit, maxDistance, shotMask, QueryTriggerInteraction.Ignore))
         {
             return false;

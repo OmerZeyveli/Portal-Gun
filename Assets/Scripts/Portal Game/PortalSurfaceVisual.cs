@@ -2,19 +2,47 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
+/// <summary>
+/// Runtime-only visual layer for placed portals. It replaces the rectangular screen mesh
+/// with an oval aperture and procedurally adds non-colliding cartoon energy rings.
+/// </summary>
 [DisallowMultipleComponent]
 public class PortalSurfaceVisual : MonoBehaviour
 {
+    [Header("Color and Shader")]
+    [Tooltip("Main portal color used by all generated rings and the optional light.")]
     public Color portalColor = new Color(0.15f, 0.55f, 1f, 1f);
+
+    [Tooltip("Stylized ring shader. If left empty, Custom/PortalEnergy is found at runtime.")]
     public Shader energyShader;
+
+    [Header("Aperture Shape")]
+    [Tooltip("Vertical center of the portal aperture in local portal space.")]
     public float centerY = 1f;
+
+    [Tooltip("Number of vertices around the oval. Lower values look more cartoonish; higher values look smoother.")]
     public int segments = 64;
+
+    [Tooltip("Radius of the actual portal render-texture screen oval.")]
     public Vector2 screenRadius = new Vector2(0.48f, 0.96f);
+
+    [Tooltip("Inner radius of the colored rim, just outside the screen aperture.")]
     public Vector2 rimInnerRadius = new Vector2(0.49f, 0.98f);
+
+    [Tooltip("Outer radius of the main colored rim.")]
     public Vector2 rimOuterRadius = new Vector2(0.58f, 1.10f);
+
+    [Tooltip("Outer radius of the dark cartoon outline ring.")]
     public Vector2 haloOuterRadius = new Vector2(0.68f, 1.24f);
+
+    [Header("Depth and Light")]
+    [Tooltip("Local Z offset for the generated rim meshes so they draw in front of the portal screen.")]
     public float rimZOffset = 0.045f;
+
+    [Tooltip("Optional point-light range. Keep at 0 for a flat cartoon look.")]
     public float lightRange;
+
+    [Tooltip("Optional point-light intensity. Keep at 0 for a flat cartoon look.")]
     public float lightIntensity;
 
     const string VisualRootName = "Portal Visuals";
@@ -32,9 +60,13 @@ public class PortalSurfaceVisual : MonoBehaviour
         LightName
     };
 
+    // Runtime assets are never saved to the prefab; they are rebuilt whenever the visual refreshes.
     readonly List<Mesh> generatedMeshes = new List<Mesh>();
     readonly List<Material> generatedMaterials = new List<Material>();
     Mesh generatedScreenMesh;
+
+    // The Portal.screen object is temporarily moved/reshaped at runtime, so its authored state
+    // must be restored if this component is toggled off during play mode.
     MeshFilter managedScreenFilter;
     Mesh originalScreenMesh;
     MeshRenderer originalScreenRenderer;
@@ -54,6 +86,7 @@ public class PortalSurfaceVisual : MonoBehaviour
 
     void OnEnable()
     {
+        // Avoid generating child objects in edit mode; prefab/scene assets should stay authored.
         if (Application.isPlaying)
         {
             Rebuild();
@@ -62,6 +95,9 @@ public class PortalSurfaceVisual : MonoBehaviour
 
     void OnDisable()
     {
+        // During play-mode shutdown Unity may already be deactivating Portal Visuals.
+        // In that case reparenting the screen causes an editor warning, so only restore
+        // hierarchy when the current hierarchy is stable.
         RestoreScreen(CanRestoreScreenTransform());
         ClearGeneratedObjects();
         ClearGeneratedScreenMesh();
@@ -121,6 +157,7 @@ public class PortalSurfaceVisual : MonoBehaviour
         Transform visualRoot = GetOrCreateVisualRoot();
         ConfigureScreen(portal.screen, visualRoot);
 
+        // Three flat rings make the style: dark outline, saturated rim, and bright inner highlight.
         int segmentCount = Mathf.Max(12, segments);
         Color outlineColor = Color.Lerp(portalColor, Color.black, 0.42f);
         Color highlightColor = Color.Lerp(portalColor, Color.white, 0.55f);
