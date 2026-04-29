@@ -58,7 +58,7 @@ MonoBehaviour:
   minMomentumSpeed: 0.05
   lockCursor: 1
   mouseSensitivity: 11
-  pitchMinMax: {x: -40, y: 85}
+  pitchMinMax: {x: -85, y: 85}
   rotationSmoothTime: 0.1
   yaw: 5.187398
   pitch: 0.5499961
