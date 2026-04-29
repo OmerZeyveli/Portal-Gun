@@ -21,14 +21,23 @@ public class Portal : MonoBehaviour {
     MeshFilter screenMeshFilter;
 
     static readonly Matrix4x4 Flip180Y = Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f));
+    const string ViewModelLayerName = "ViewModel";
 
     void Awake () {
         playerCam = Camera.main;
         portalCam = GetComponentInChildren<Camera> ();
+        ExcludeViewModelLayer(portalCam);
         portalCam.enabled = false;
         trackedTravellers = new List<PortalTraveller> ();
         screenMeshFilter = screen.GetComponent<MeshFilter> ();
         screen.material.SetInt ("displayMask", 1);
+    }
+
+    static void ExcludeViewModelLayer(Camera camera) {
+        int viewModelLayer = LayerMask.NameToLayer(ViewModelLayerName);
+        if (camera && viewModelLayer >= 0) {
+            camera.cullingMask &= ~(1 << viewModelLayer);
+        }
     }
 
     void LateUpdate () {

@@ -3,6 +3,11 @@ using UnityEngine;
 
 public class PortalGunViewModel : MonoBehaviour
 {
+    const string ViewModelLayerName = "ViewModel";
+    const string ViewModelCameraName = "ViewModel Camera";
+    const float ViewModelNearClip = 0.01f;
+    const float ViewModelFarClip = 20f;
+
     [Header("Pose")]
     public Vector3 localPosition = new Vector3(0.34f, -0.28f, 0.58f);
     public Vector3 localEulerAngles = new Vector3(2f, -4f, 0f);
@@ -39,6 +44,7 @@ public class PortalGunViewModel : MonoBehaviour
 
         baseLocalPosition = transform.localPosition;
         baseLocalRotation = transform.localRotation;
+        ConfigureViewModelRendering(ownerCamera);
         SetAccentColor(initialAccent);
         ApplyPose();
     }
@@ -78,6 +84,7 @@ public class PortalGunViewModel : MonoBehaviour
         AddPart("Muzzle Glow", PrimitiveType.Sphere, new Vector3(0f, 0f, 0.47f), Vector3.zero, new Vector3(0.075f, 0.075f, 0.075f), accentMaterial, true);
 
         GameObject muzzleObject = new GameObject("Muzzle");
+        muzzleObject.layer = gameObject.layer;
         muzzleObject.transform.SetParent(transform, false);
         muzzleObject.transform.localPosition = new Vector3(0f, 0f, 0.56f);
         muzzleObject.transform.localRotation = Quaternion.identity;
@@ -88,6 +95,7 @@ public class PortalGunViewModel : MonoBehaviour
     {
         GameObject part = GameObject.CreatePrimitive(primitive);
         part.name = name;
+        part.layer = gameObject.layer;
         part.transform.SetParent(transform, false);
         part.transform.localPosition = position;
         part.transform.localRotation = Quaternion.Euler(euler);
@@ -110,6 +118,66 @@ public class PortalGunViewModel : MonoBehaviour
             {
                 accentRenderers.Add(renderer);
             }
+        }
+    }
+
+    void ConfigureViewModelRendering(Camera ownerCamera)
+    {
+        int viewModelLayer = LayerMask.NameToLayer(ViewModelLayerName);
+        if (viewModelLayer < 0)
+        {
+            Debug.LogWarning($"[PortalGunViewModel] Layer '{ViewModelLayerName}' was not found. The portal gun will render on the world camera and may clip into walls.");
+            return;
+        }
+
+        SetLayerRecursively(transform, viewModelLayer);
+
+        if (!ownerCamera)
+        {
+            return;
+        }
+
+        int viewModelMask = 1 << viewModelLayer;
+        ownerCamera.cullingMask &= ~viewModelMask;
+
+        Camera viewModelCamera = GetOrCreateViewModelCamera(ownerCamera, viewModelLayer);
+        viewModelCamera.clearFlags = CameraClearFlags.Depth;
+        viewModelCamera.cullingMask = viewModelMask;
+        viewModelCamera.depth = ownerCamera.depth + 1f;
+        viewModelCamera.fieldOfView = ownerCamera.fieldOfView;
+        viewModelCamera.nearClipPlane = ViewModelNearClip;
+        viewModelCamera.farClipPlane = ViewModelFarClip;
+        viewModelCamera.renderingPath = ownerCamera.renderingPath;
+        viewModelCamera.allowHDR = ownerCamera.allowHDR;
+        viewModelCamera.allowMSAA = ownerCamera.allowMSAA;
+        viewModelCamera.useOcclusionCulling = false;
+    }
+
+    static Camera GetOrCreateViewModelCamera(Camera ownerCamera, int viewModelLayer)
+    {
+        Transform existing = ownerCamera.transform.Find(ViewModelCameraName);
+        GameObject cameraObject = existing ? existing.gameObject : new GameObject(ViewModelCameraName);
+        cameraObject.layer = viewModelLayer;
+        cameraObject.transform.SetParent(ownerCamera.transform, false);
+        cameraObject.transform.localPosition = Vector3.zero;
+        cameraObject.transform.localRotation = Quaternion.identity;
+        cameraObject.transform.localScale = Vector3.one;
+
+        Camera viewModelCamera = cameraObject.GetComponent<Camera>();
+        if (!viewModelCamera)
+        {
+            viewModelCamera = cameraObject.AddComponent<Camera>();
+        }
+
+        return viewModelCamera;
+    }
+
+    static void SetLayerRecursively(Transform root, int layer)
+    {
+        root.gameObject.layer = layer;
+        for (int i = 0; i < root.childCount; i++)
+        {
+            SetLayerRecursively(root.GetChild(i), layer);
         }
     }
 
