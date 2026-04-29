@@ -7,10 +7,10 @@ public class PortalShotVfx : MonoBehaviour
     public float fadeTime = 0.12f;
     public float trailLength = 4f;
     public float validWidth = 0.075f;
-    public float invalidWidth = 0.035f;
+    public float invalidWidth = 0.055f;
     public float lightRange = 2.2f;
     public float validLightIntensity = 2.8f;
-    public float invalidLightIntensity = 0.9f;
+    public float invalidLightIntensity = 1.6f;
 
     Material lineMaterial;
 
@@ -52,7 +52,7 @@ public class PortalShotVfx : MonoBehaviour
             Vector3 head = start + direction * headDistance;
             Vector3 tail = start + direction * tailDistance;
 
-            SetLine(line, tail, head, color, width, success ? 1f : 0.55f);
+            SetLine(line, tail, head, color, width, success ? 1f : 0.75f);
             light.transform.position = head;
             light.intensity = intensity;
 
@@ -67,7 +67,7 @@ public class PortalShotVfx : MonoBehaviour
             float alpha = 1f - t;
             Vector3 tail = Vector3.Lerp(start, end, Mathf.Max(0f, 1f - visibleTrail / Mathf.Max(distance, 0.001f)));
 
-            SetLine(line, tail, end, color, width * alpha, alpha * (success ? 1f : 0.45f));
+            SetLine(line, tail, end, color, width * alpha, alpha * (success ? 1f : 0.6f));
             light.transform.position = end;
             light.intensity = intensity * alpha;
 

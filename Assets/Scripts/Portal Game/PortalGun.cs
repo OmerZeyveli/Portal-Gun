@@ -10,6 +10,7 @@ public class PortalGun : MonoBehaviour
 
     [Header("Placement")]
     public float maxDistance = 200f;
+    public LayerMask shotMask = Physics.DefaultRaycastLayers;
 
     [Tooltip("How far the portal should sit in front of the hit surface (meters).")]
     public float forwardOffset = 0.02f;
@@ -195,14 +196,18 @@ public class PortalGun : MonoBehaviour
         }
 
         Ray ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
-        if (!Physics.Raycast(ray, out RaycastHit hit, maxDistance, portalableMask))
+        if (!Physics.Raycast(ray, out RaycastHit hit, maxDistance, shotMask, QueryTriggerInteraction.Ignore))
         {
-            // Debug.LogError("[PortalGun] TryPlace failed: raycast did not hit anything in portalableMask. Check layers/mask/colliders.");
             return false;
         }
 
         result.hitPoint = hit.point;
         result.hitNormal = hit.normal.normalized;
+
+        if (!LayerInMask(hit.collider.gameObject.layer, portalableMask))
+        {
+            return false;
+        }
 
         var tile = hit.collider.GetComponentInParent<PortalTile>();
         if (!tile)
@@ -268,6 +273,11 @@ public class PortalGun : MonoBehaviour
         result.portalRotation = rot;
         portal.transform.SetPositionAndRotation(result.portalPosition, result.portalRotation);
         return true;
+    }
+
+    static bool LayerInMask(int layer, LayerMask mask)
+    {
+        return (mask.value & (1 << layer)) != 0;
     }
 
     /// <summary>
