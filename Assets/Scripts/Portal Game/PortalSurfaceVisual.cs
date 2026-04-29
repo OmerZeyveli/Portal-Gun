@@ -50,6 +50,7 @@ public class PortalSurfaceVisual : MonoBehaviour
     LightProbeUsage originalScreenLightProbeUsage;
     ReflectionProbeUsage originalScreenReflectionProbeUsage;
     bool hasStoredScreenState;
+    bool isApplicationQuitting;
 
     void OnEnable()
     {
@@ -61,11 +62,16 @@ public class PortalSurfaceVisual : MonoBehaviour
 
     void OnDisable()
     {
-        RestoreScreen();
+        RestoreScreen(CanRestoreScreenTransform());
         ClearGeneratedObjects();
         ClearGeneratedScreenMesh();
         ClearRuntimeAssets();
         DestroyEmptyVisualRoot();
+    }
+
+    void OnApplicationQuit()
+    {
+        isApplicationQuitting = true;
     }
 
 #if UNITY_EDITOR
@@ -107,7 +113,7 @@ public class PortalSurfaceVisual : MonoBehaviour
 
         if (hasStoredScreenState && managedScreenFilter && managedScreenFilter != screenFilter)
         {
-            RestoreScreen();
+            RestoreScreen(true);
         }
 
         StoreScreenState(portal.screen, screenFilter);
@@ -133,7 +139,7 @@ public class PortalSurfaceVisual : MonoBehaviour
 
     void ClearVisualsAndRestoreScreen()
     {
-        RestoreScreen();
+        RestoreScreen(true);
         ClearGeneratedObjects();
         ClearGeneratedScreenMesh();
         ClearRuntimeAssets();
@@ -196,7 +202,28 @@ public class PortalSurfaceVisual : MonoBehaviour
         hasStoredScreenState = true;
     }
 
-    void RestoreScreen()
+    bool CanRestoreScreenTransform()
+    {
+        if (isApplicationQuitting)
+        {
+            return false;
+        }
+
+        if (!gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        Transform currentParent = originalScreenTransform ? originalScreenTransform.parent : null;
+        if (currentParent && !currentParent.gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    void RestoreScreen(bool restoreTransform)
     {
         if (!hasStoredScreenState)
         {
@@ -208,7 +235,7 @@ public class PortalSurfaceVisual : MonoBehaviour
             managedScreenFilter.sharedMesh = originalScreenMesh;
         }
 
-        if (originalScreenTransform)
+        if (restoreTransform && originalScreenTransform)
         {
             originalScreenTransform.SetParent(originalScreenParent, false);
             originalScreenTransform.SetSiblingIndex(originalScreenSiblingIndex);
@@ -226,12 +253,15 @@ public class PortalSurfaceVisual : MonoBehaviour
             originalScreenRenderer.reflectionProbeUsage = originalScreenReflectionProbeUsage;
         }
 
-        managedScreenFilter = null;
-        originalScreenMesh = null;
-        originalScreenRenderer = null;
-        originalScreenTransform = null;
-        originalScreenParent = null;
-        hasStoredScreenState = false;
+        if (restoreTransform)
+        {
+            managedScreenFilter = null;
+            originalScreenMesh = null;
+            originalScreenRenderer = null;
+            originalScreenTransform = null;
+            originalScreenParent = null;
+            hasStoredScreenState = false;
+        }
     }
 
     void CreateRing(Transform parent, string name, Vector2 innerRadius, Vector2 outerRadius, float z, Color color, float alpha, float intensity, float speed, float pulse, float edgeSoftness, float bandScale, float whiteAmount)
