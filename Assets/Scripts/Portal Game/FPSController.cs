@@ -73,6 +73,7 @@ public class FPSController : PortalTraveller {
         Vector3 worldInputDir = transform.TransformDirection (inputDir);
 
         float currentSpeed = (Input.GetKey (KeyCode.LeftShift)) ? runSpeed : walkSpeed;
+        // Movement stays world-upright; portals only change momentum and facing.
         Vector3 targetVelocity = Vector3.ProjectOnPlane (worldInputDir, Vector3.up).normalized * currentSpeed;
         Vector3 planarVelocity = Vector3.ProjectOnPlane (velocity, Vector3.up);
         planarVelocity = Vector3.SmoothDamp (planarVelocity, targetVelocity, ref smoothV, smoothMoveTime);
@@ -105,7 +106,7 @@ public class FPSController : PortalTraveller {
         float mX = Input.GetAxisRaw ("Mouse X");
         float mY = Input.GetAxisRaw ("Mouse Y");
 
-        // Verrrrrry gross hack to stop camera swinging down at start
+        // Ignore the large first mouse delta from cursor lock.
         float mMag = Mathf.Sqrt (mX * mX + mY * mY);
         if (mMag > 5) {
             mX = 0;
@@ -127,6 +128,7 @@ public class FPSController : PortalTraveller {
         transform.position = pos;
 
         Quaternion portalDelta = toPortal.rotation * PortalFlip * Quaternion.Inverse (fromPortal.rotation);
+        // Same-facing floor/ceiling portals need upright yaw, not mirrored 3D rotation.
         bool sameFacingHorizontalPortals = IsHorizontalPortal (fromPortal) && IsHorizontalPortal (toPortal) && Vector3.Dot (fromPortal.forward, toPortal.forward) > 0.75f;
         Quaternion horizontalDelta = Quaternion.identity;
         bool useHorizontalDelta = sameFacingHorizontalPortals && TryGetHorizontalPortalDelta (fromPortal, toPortal, out horizontalDelta);
@@ -140,6 +142,7 @@ public class FPSController : PortalTraveller {
         }
 
         if (useHorizontalDelta) {
+            // Rotate floor-plane momentum and flip vertical momentum through the portal.
             Vector3 planarVelocity = Vector3.ProjectOnPlane (velocity, Vector3.up);
             float oldVerticalVelocity = Vector3.Dot (velocity, Vector3.up);
             velocity = (horizontalDelta * planarVelocity) - Vector3.up * oldVerticalVelocity;
@@ -176,6 +179,7 @@ public class FPSController : PortalTraveller {
 
         Vector3 flatForward = Vector3.ProjectOnPlane (forward, Vector3.up);
         if (flatForward.sqrMagnitude < minFlatLookSqrMagnitude) {
+            // When looking nearly vertical, use camera up to keep yaw stable.
             Vector3 flatUp = Vector3.ProjectOnPlane (up, Vector3.up);
             if (flatUp.sqrMagnitude > minFlatLookSqrMagnitude) {
                 flatForward = (Vector3.Dot (forward, Vector3.up) > 0f) ? -flatUp : flatUp;
@@ -202,6 +206,7 @@ public class FPSController : PortalTraveller {
     }
 
     bool TryGetHorizontalPortalDelta (Transform fromPortal, Transform toPortal, out Quaternion delta) {
+        // Portal roll on the floor maps to player yaw around world up.
         Vector3 fromUp = Vector3.ProjectOnPlane (fromPortal.up, Vector3.up);
         Vector3 toUp = Vector3.ProjectOnPlane (toPortal.up, Vector3.up);
 
