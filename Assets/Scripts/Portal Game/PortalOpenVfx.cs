@@ -157,7 +157,10 @@ public class PortalOpenVfx : MonoBehaviour
         particles.transform.localRotation = Quaternion.identity;
 
         ParticleSystem particleSystem = particles.AddComponent<ParticleSystem>();
+        particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
         ParticleSystem.MainModule main = particleSystem.main;
+        main.playOnAwake = false;
         main.loop = false;
         main.duration = 0.22f;
         main.startLifetime = 0.24f;

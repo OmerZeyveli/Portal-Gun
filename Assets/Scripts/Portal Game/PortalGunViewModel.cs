@@ -25,7 +25,7 @@ public class PortalGunViewModel : MonoBehaviour
 
     public void Initialize(Camera ownerCamera, Color initialAccent)
     {
-        if (ownerCamera && transform.parent != ownerCamera.transform)
+        if (ownerCamera && !transform.IsChildOf(ownerCamera.transform))
         {
             transform.SetParent(ownerCamera.transform, false);
         }
