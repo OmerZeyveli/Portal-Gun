@@ -91,6 +91,7 @@ public class FPSController : PortalTraveller {
 
         velocity = GetTotalVelocity ();
 
+        Vector3 positionBeforeMove = transform.position;
         var flags = controller.Move (velocity * Time.deltaTime);
         grounded = (flags & CollisionFlags.Below) != 0;
         if (grounded) {
@@ -104,6 +105,9 @@ public class FPSController : PortalTraveller {
             verticalVelocity = 0f;
         }
         velocity = GetTotalVelocity ();
+
+        // Catch fast moves that skip the portal trigger.
+        Portal.TryTeleportTravellerAcrossAnyPortal (this, positionBeforeMove, transform.position, controller.radius);
 
         if (Input.GetKeyDown (KeyCode.Space)) {
             float timeSinceLastTouchedGround = Time.time - lastGroundedTime;

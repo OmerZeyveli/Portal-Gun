@@ -21,7 +21,9 @@ public class Portal : MonoBehaviour {
     MeshFilter screenMeshFilter;
 
     static readonly Matrix4x4 Flip180Y = Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f));
+    static readonly List<Portal> activePortals = new List<Portal>();
     const string ViewModelLayerName = "ViewModel";
+    const float PlaneCrossingEpsilon = 0.0001f;
 
     void Awake () {
         playerCam = Camera.main;
@@ -31,6 +33,16 @@ public class Portal : MonoBehaviour {
         trackedTravellers = new List<PortalTraveller> ();
         screenMeshFilter = screen.GetComponent<MeshFilter> ();
         screen.material.SetInt ("displayMask", 1);
+    }
+
+    void OnEnable () {
+        if (!activePortals.Contains(this)) {
+            activePortals.Add(this);
+        }
+    }
+
+    void OnDisable () {
+        activePortals.Remove(this);
     }
 
     static void ExcludeViewModelLayer(Camera camera) {
@@ -59,13 +71,7 @@ public class Portal : MonoBehaviour {
             int portalSideOld = System.Math.Sign (Vector3.Dot (traveller.previousOffsetFromPortal, transform.forward));
             // Teleport the traveller if it has crossed from one side of the portal to the other
             if (portalSide != portalSideOld) {
-                var positionOld = travellerT.position;
-                var rotOld = travellerT.rotation;
-                traveller.Teleport (transform, linkedPortal.transform, m.GetColumn (3), m.rotation);
-                traveller.graphicsClone.transform.SetPositionAndRotation (positionOld, rotOld);
-                // Can't rely on OnTriggerEnter/Exit to be called next frame since it depends on when FixedUpdate runs
-                linkedPortal.OnTravellerEnterPortal (traveller);
-                trackedTravellers.RemoveAt (i);
+                TeleportTraveller (traveller, m);
                 i--;
 
             } else {
@@ -74,6 +80,105 @@ public class Portal : MonoBehaviour {
                 traveller.previousOffsetFromPortal = offsetFromPortal;
             }
         }
+    }
+
+    public static bool TryTeleportTravellerAcrossAnyPortal (PortalTraveller traveller, Vector3 fromPosition, Vector3 toPosition, float boundsPadding) {
+        Portal firstCrossedPortal = null;
+        float firstCrossingTime = float.PositiveInfinity;
+
+        for (int i = 0; i < activePortals.Count; i++) {
+            Portal portal = activePortals[i];
+            if (portal && portal.TryGetPortalCrossing (traveller, fromPosition, toPosition, boundsPadding, out float crossingTime) && crossingTime < firstCrossingTime) {
+                firstCrossedPortal = portal;
+                firstCrossingTime = crossingTime;
+            }
+        }
+
+        if (!firstCrossedPortal) {
+            return false;
+        }
+
+        firstCrossedPortal.TeleportTravellerAcrossPortal (traveller);
+        return true;
+    }
+
+    public bool TryTeleportTravellerAcrossPortal (PortalTraveller traveller, Vector3 fromPosition, Vector3 toPosition, float boundsPadding) {
+        if (!TryGetPortalCrossing (traveller, fromPosition, toPosition, boundsPadding, out _)) {
+            return false;
+        }
+
+        TeleportTravellerAcrossPortal (traveller);
+        return true;
+    }
+
+    bool TryGetPortalCrossing (PortalTraveller traveller, Vector3 fromPosition, Vector3 toPosition, float boundsPadding, out float crossingTime) {
+        crossingTime = 0f;
+        if (!traveller || !linkedPortal) {
+            return false;
+        }
+
+        Vector3 portalForward = transform.forward;
+        float fromDistance = Vector3.Dot (fromPosition - transform.position, portalForward);
+        float toDistance = Vector3.Dot (toPosition - transform.position, portalForward);
+        bool crossed =
+            (fromDistance > PlaneCrossingEpsilon && toDistance < -PlaneCrossingEpsilon) ||
+            (fromDistance < -PlaneCrossingEpsilon && toDistance > PlaneCrossingEpsilon);
+
+        if (!crossed) {
+            return false;
+        }
+
+        float denominator = fromDistance - toDistance;
+        if (Mathf.Abs (denominator) < PlaneCrossingEpsilon) {
+            return false;
+        }
+
+        float t = fromDistance / denominator;
+        if (t < 0f || t > 1f) {
+            return false;
+        }
+
+        Vector3 crossingPoint = Vector3.Lerp (fromPosition, toPosition, t);
+        if (!PointInsidePortalBounds (crossingPoint, boundsPadding)) {
+            return false;
+        }
+
+        crossingTime = t;
+        return true;
+    }
+
+    void TeleportTravellerAcrossPortal (PortalTraveller traveller) {
+        Transform travellerT = traveller.transform;
+        var m = linkedPortal.transform.localToWorldMatrix * Flip180Y * transform.worldToLocalMatrix * travellerT.localToWorldMatrix;
+        TeleportTraveller (traveller, m);
+    }
+
+    void TeleportTraveller (PortalTraveller traveller, Matrix4x4 destinationMatrix) {
+        Transform travellerT = traveller.transform;
+        var positionOld = travellerT.position;
+        var rotOld = travellerT.rotation;
+
+        traveller.Teleport (transform, linkedPortal.transform, destinationMatrix.GetColumn (3), destinationMatrix.rotation);
+        if (traveller.graphicsClone) {
+            traveller.graphicsClone.transform.SetPositionAndRotation (positionOld, rotOld);
+        }
+
+        // Can't rely on OnTriggerEnter/Exit to be called next frame since it depends on when FixedUpdate runs
+        linkedPortal.OnTravellerEnterPortal (traveller);
+        trackedTravellers.Remove (traveller);
+    }
+
+    bool PointInsidePortalBounds (Vector3 worldPoint, float padding) {
+        BoxCollider box = GetComponent<BoxCollider> ();
+        if (!box) {
+            return true;
+        }
+
+        Vector3 localPoint = transform.InverseTransformPoint (worldPoint);
+        Vector3 halfSize = box.size * 0.5f;
+        Vector3 offset = localPoint - box.center;
+        return Mathf.Abs (offset.x) <= halfSize.x + padding &&
+               Mathf.Abs (offset.y) <= halfSize.y + padding;
     }
 
     // Called before any portal cameras are rendered for the current frame
