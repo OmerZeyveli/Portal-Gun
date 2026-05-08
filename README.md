@@ -29,6 +29,7 @@ A first-person portal-shooter sandbox built in Unity, inspired by Valve's *Porta
 | Jump              | `Space`            |
 | Fire blue portal  | `Left Mouse`       |
 | Fire orange portal| `Right Mouse`      |
+| Restart scene     | `R`                |
 | Toggle player input | `O`              |
 | Pause editor (debug break) | `P`       |
 
