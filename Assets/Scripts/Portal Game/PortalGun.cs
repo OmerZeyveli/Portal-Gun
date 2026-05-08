@@ -56,6 +56,10 @@ public class PortalGun : MonoBehaviour
     [Tooltip("Color used by orange shot/open/portal visuals.")]
     public Color orangePortalColor = new Color(1f, 0.35f, 0.05f, 1f);
 
+    [Header("Input")]
+    [Tooltip("When true, the script reads left/right mouse buttons itself. Disable to drive firing from your own input system via FireBlue() / FireOrange().")]
+    public bool inputEnabled = true;
+
     PortalGrid grid;
     bool viewModelInitialized;
 
@@ -116,9 +120,16 @@ public class PortalGun : MonoBehaviour
     {
         UpdateCrosshair();
 
-        if (Input.GetMouseButtonDown(0)) FirePortal(bluePortal, bluePortalColor);
-        if (Input.GetMouseButtonDown(1)) FirePortal(orangePortal, orangePortalColor);
+        if (!inputEnabled) return;
+        if (Input.GetMouseButtonDown(0)) FireBlue();
+        if (Input.GetMouseButtonDown(1)) FireOrange();
     }
+
+    /// <summary>Fires the blue portal. Call this from your own input handler when inputEnabled is false.</summary>
+    public void FireBlue() => FirePortal(bluePortal, bluePortalColor);
+
+    /// <summary>Fires the orange portal. Call this from your own input handler when inputEnabled is false.</summary>
+    public void FireOrange() => FirePortal(orangePortal, orangePortalColor);
 
     void EnsureVisuals()
     {
