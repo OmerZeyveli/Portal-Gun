@@ -38,6 +38,12 @@ public class PortalGun : MonoBehaviour
     [Tooltip("Beam/tracer VFX played for every shot hit or miss.")]
     public PortalShotVfx shotVfx;
 
+    [Tooltip("Shows the procedural portal placement crosshair.")]
+    public bool showCrosshair = true;
+
+    [Tooltip("Optional procedural crosshair. Created at runtime when empty and autoCreateVisuals is enabled.")]
+    public PortalCrosshair crosshair;
+
     [Tooltip("Open burst played on the blue portal after successful placement.")]
     public PortalOpenVfx blueOpenVfx;
 
@@ -61,6 +67,8 @@ public class PortalGun : MonoBehaviour
         public Vector3 hitNormal;
         public Vector3 portalPosition;
         public Quaternion portalRotation;
+        public PortalTile bottomTile;
+        public PortalTile topTile;
     }
 
     void Awake()
@@ -106,6 +114,8 @@ public class PortalGun : MonoBehaviour
 
     void Update()
     {
+        UpdateCrosshair();
+
         if (Input.GetMouseButtonDown(0)) FirePortal(bluePortal, bluePortalColor);
         if (Input.GetMouseButtonDown(1)) FirePortal(orangePortal, orangePortalColor);
     }
@@ -137,6 +147,10 @@ public class PortalGun : MonoBehaviour
                 shotVfx = gameObject.AddComponent<PortalShotVfx>();
         }
 
+        if (showCrosshair)
+            EnsureCrosshair();
+        ConfigureCrosshair();
+
         if (autoCreateVisuals)
         {
             blueOpenVfx = EnsureOpenVfx(bluePortal, blueOpenVfx);
@@ -154,6 +168,57 @@ public class PortalGun : MonoBehaviour
             openVfx = portal.gameObject.AddComponent<PortalOpenVfx>();
 
         return openVfx;
+    }
+
+    PortalCrosshair EnsureCrosshair()
+    {
+        if (crosshair)
+            return crosshair;
+
+        crosshair = GetComponentInChildren<PortalCrosshair>(true);
+        if (crosshair || !autoCreateVisuals)
+            return crosshair;
+
+        GameObject crosshairObject = new GameObject("PortalCrosshair");
+        crosshairObject.transform.SetParent(transform, false);
+        crosshair = crosshairObject.AddComponent<PortalCrosshair>();
+        return crosshair;
+    }
+
+    void ConfigureCrosshair()
+    {
+        if (!crosshair)
+            return;
+
+        crosshair.SetColors(bluePortalColor, orangePortalColor);
+        crosshair.gameObject.SetActive(showCrosshair);
+    }
+
+    void UpdateCrosshair()
+    {
+        if (!showCrosshair)
+        {
+            if (crosshair && crosshair.gameObject.activeSelf)
+                crosshair.gameObject.SetActive(false);
+            return;
+        }
+
+        if (!crosshair)
+            EnsureCrosshair();
+        if (!crosshair)
+            return;
+
+        if (!crosshair.gameObject.activeSelf)
+            crosshair.gameObject.SetActive(true);
+
+        crosshair.SetColors(bluePortalColor, orangePortalColor);
+        crosshair.SetAvailability(CanPlacePortal(bluePortal), CanPlacePortal(orangePortal));
+    }
+
+    bool CanPlacePortal(Portal portal)
+    {
+        PortalPlacementResult result;
+        return TryEvaluatePlacement(portal, false, out result);
     }
 
     void FirePortal(Portal portal, Color color)
@@ -201,21 +266,38 @@ public class PortalGun : MonoBehaviour
 
     bool TryPlace(Portal portal, out PortalPlacementResult result)
     {
+        if (!TryEvaluatePlacement(portal, true, out result))
+            return false;
+
+        var occ = portal.GetComponent<PortalOccupancy>();
+        if (!occ.Place(result.bottomTile, result.topTile))
+        {
+            Debug.LogError($"[PortalGun] TryPlace failed: tiles are occupied or cannot be used. bottom='{result.bottomTile.name}' top='{result.topTile.name}'");
+            result.success = false;
+            return false;
+        }
+
+        portal.transform.SetPositionAndRotation(result.portalPosition, result.portalRotation);
+        return true;
+    }
+
+    bool TryEvaluatePlacement(Portal portal, bool logErrors, out PortalPlacementResult result)
+    {
         result = CreateDefaultResult();
 
         if (!portal)
         {
-            Debug.LogError("[PortalGun] TryPlace failed: portal reference is null.");
+            LogPlacementError(logErrors, "[PortalGun] TryPlace failed: portal reference is null.");
             return false;
         }
         if (!cam)
         {
-            Debug.LogError("[PortalGun] TryPlace failed: camera reference is null.");
+            LogPlacementError(logErrors, "[PortalGun] TryPlace failed: camera reference is null.");
             return false;
         }
         if (!EnsureGrid())
         {
-            Debug.LogError("[PortalGun] TryPlace failed: PortalGrid not found.");
+            LogPlacementError(logErrors, "[PortalGun] TryPlace failed: PortalGrid not found.");
             return false;
         }
 
@@ -238,12 +320,12 @@ public class PortalGun : MonoBehaviour
         var tile = hit.collider.GetComponentInParent<PortalTile>();
         if (!tile)
         {
-            Debug.LogError($"[PortalGun] TryPlace failed: hit '{hit.collider.name}' but no PortalTile found in parent hierarchy.");
+            LogPlacementError(logErrors, $"[PortalGun] TryPlace failed: hit '{hit.collider.name}' but no PortalTile found in parent hierarchy.");
             return false;
         }
         if (!tile.portalable)
         {
-            Debug.LogError($"[PortalGun] TryPlace failed: tile '{tile.name}' is marked non-portalable.");
+            LogPlacementError(logErrors, $"[PortalGun] TryPlace failed: tile '{tile.name}' is marked non-portalable.");
             return false;
         }
 
@@ -261,7 +343,7 @@ public class PortalGun : MonoBehaviour
         {
             if (!grid.TryGetNeighbor(tile, -preferredDir, out neighbor))
             {
-                Debug.LogError($"[PortalGun] TryPlace failed: no adjacent tile found for 2-tile portal. tile='{tile.name}' coord={tile.Coord} preferredDir={preferredDir}");
+                LogPlacementError(logErrors, $"[PortalGun] TryPlace failed: no adjacent tile found for 2-tile portal. tile='{tile.name}' coord={tile.Coord} preferredDir={preferredDir}");
                 return false;
             }
         }
@@ -273,12 +355,12 @@ public class PortalGun : MonoBehaviour
         var occ = portal.GetComponent<PortalOccupancy>();
         if (!occ)
         {
-            Debug.LogError($"[PortalGun] TryPlace failed: portal '{portal.name}' is missing PortalOccupancy component.");
+            LogPlacementError(logErrors, $"[PortalGun] TryPlace failed: portal '{portal.name}' is missing PortalOccupancy component.");
             return false;
         }
-        if (!occ.Place(bottom, top))
+        if (!bottom.CanOccupy(occ) || !top.CanOccupy(occ))
         {
-            Debug.LogError($"[PortalGun] TryPlace failed: tiles are occupied or cannot be used. bottom='{bottom.name}' top='{top.name}'");
+            LogPlacementError(logErrors, $"[PortalGun] TryPlace failed: tiles are occupied or cannot be used. bottom='{bottom.name}' top='{top.name}'");
             return false;
         }
 
@@ -297,8 +379,15 @@ public class PortalGun : MonoBehaviour
         result.success = true;
         result.portalPosition = center + normal * forwardOffset;
         result.portalRotation = rot;
-        portal.transform.SetPositionAndRotation(result.portalPosition, result.portalRotation);
+        result.bottomTile = bottom;
+        result.topTile = top;
         return true;
+    }
+
+    static void LogPlacementError(bool shouldLog, string message)
+    {
+        if (shouldLog)
+            Debug.LogError(message);
     }
 
     static bool LayerInMask(int layer, LayerMask mask)
