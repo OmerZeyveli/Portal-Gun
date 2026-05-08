@@ -107,8 +107,8 @@ Both methods evaluate the placement, run VFX, and update the crosshair the same 
 ## Credits
 
 - **Portal rendering core** — based on [Sebastian Lague's Portals project](https://github.com/SebLague/Portals), MIT-licensed (`Assets/Scripts/Portal Core/`).
-- **Portal gun model** — placed in `Assets/Models/portal-gun/`.
+- **Portal gun model** — ["Portal Gun" on Sketchfab](https://sketchfab.com/3d-models/portal-gun-b0260066ba2c4e80aba4d1d8717d9fd9).
 
 ## License
 
-Released under the [MIT License](License). The original portal-rendering code is also MIT-licensed by Sebastian Lague.
+Released under the [MIT License](License). The original portal-rendering code is also MIT-licensed.
