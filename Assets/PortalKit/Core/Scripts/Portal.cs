@@ -22,7 +22,6 @@ namespace PortalKit.Core
         List<PortalTraveller> trackedTravellers;
         MeshFilter screenMeshFilter;
 
-        static readonly Matrix4x4 Flip180Y = Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 0f));
         static readonly List<Portal> activePortals = new List<Portal>();
         const string ViewModelLayerName = "ViewModel";
         const float PlaneCrossingEpsilon = 0.0001f;
@@ -64,9 +63,7 @@ namespace PortalKit.Core
                 PortalTraveller traveller = trackedTravellers[i];
                 Transform travellerT = traveller.transform;
 
-                // Apply a 180° flip around local Y so travelling through two portals facing the same
-                // direction still exits from the front side of the linked portal.
-                var m = linkedPortal.transform.localToWorldMatrix * Flip180Y * transform.worldToLocalMatrix * travellerT.localToWorldMatrix;
+                var m = PortalTransformUtility.TravelMatrix (transform, linkedPortal.transform) * travellerT.localToWorldMatrix;
 
                 Vector3 offsetFromPortal = travellerT.position - transform.position;
                 int portalSide = System.Math.Sign (Vector3.Dot (offsetFromPortal, transform.forward));
@@ -151,7 +148,7 @@ namespace PortalKit.Core
 
         void TeleportTravellerAcrossPortal (PortalTraveller traveller) {
             Transform travellerT = traveller.transform;
-            var m = linkedPortal.transform.localToWorldMatrix * Flip180Y * transform.worldToLocalMatrix * travellerT.localToWorldMatrix;
+            var m = PortalTransformUtility.TravelMatrix (transform, linkedPortal.transform) * travellerT.localToWorldMatrix;
             TeleportTraveller (traveller, m);
         }
 
@@ -214,7 +211,7 @@ namespace PortalKit.Core
                         break;
                     }
                 }
-                localToWorldMatrix = transform.localToWorldMatrix * Flip180Y * linkedPortal.transform.worldToLocalMatrix * localToWorldMatrix;
+                localToWorldMatrix = PortalTransformUtility.TravelMatrix (linkedPortal.transform, transform) * localToWorldMatrix;
                 int renderOrderIndex = recursionLimit - i - 1;
                 renderPositions[renderOrderIndex] = localToWorldMatrix.GetColumn (3);
                 renderRotations[renderOrderIndex] = localToWorldMatrix.rotation;
@@ -264,7 +261,7 @@ namespace PortalKit.Core
                 }
 
                 // Ensure clone is properly sliced, in case it's visible through this portal:
-                // Flip180Y: the visible part of the clone is on the same side number as the traveller.
+                // The portal flip: the visible part of the clone is on the same side number as the traveller.
                 int cloneSideOfLinkedPortal = SideOfPortal (traveller.transform.position);
                 bool camSameSideAsClone = linkedPortal.SideOfPortal (portalCamPos) == cloneSideOfLinkedPortal;
                 if (camSameSideAsClone) {
@@ -334,7 +331,7 @@ namespace PortalKit.Core
 
         void UpdateSliceParams (PortalTraveller traveller) {
             // Calculate slice normal
-            // Flip180Y maps side s of this portal to side -s of the linked portal, so the part that has
+            // The portal flip (PortalTransformUtility) maps side s of this portal to side -s of the linked portal, so the part that has
             // already crossed (side -s here) appears on side s of the linked portal.
             int side = SideOfPortal (traveller.transform.position);
             Vector3 sliceNormal = transform.forward * -side;

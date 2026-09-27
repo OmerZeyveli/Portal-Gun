@@ -47,8 +47,6 @@ namespace PortalKit.Samples
         float lastGroundedTime;
         bool disabled;
 
-        static readonly Quaternion PortalFlip = Quaternion.Euler(0f, 180f, 0f);
-
         void Start () {
             cam = Camera.main;
             if (lockCursor) {
@@ -149,17 +147,21 @@ namespace PortalKit.Samples
         public override void Teleport (Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot) {
             transform.position = pos;
 
-            // Same mapping the portal uses to render its view. Between floor portals this leaves the camera
-            // upside down, so snap to the closest upright look and ease out the rest instead of flipping the view.
-            Quaternion portalDelta = toPortal.rotation * PortalFlip * Quaternion.Inverse (fromPortal.rotation);
-            Quaternion mappedCamRotation = portalDelta * cam.transform.rotation;
-            SetClosestUprightLook (mappedCamRotation);
-            camOffset = Quaternion.Inverse (UprightCamRotation (smoothYaw, smoothPitch)) * mappedCamRotation;
+            // Map the camera through the portal, snap to the closest upright look and ease out the rest in Update.
+            Quaternion mappedCamRotation = PortalTransformUtility.TransformRotation (fromPortal, toPortal, cam.transform.rotation);
+            UprightLook look = PortalTransformUtility.ClosestUprightLook (mappedCamRotation, pitchMinMax);
+            smoothYaw += Mathf.DeltaAngle (smoothYaw, look.yaw);
+            yaw = smoothYaw;
+            pitch = look.pitch;
+            smoothPitch = look.pitch;
+            yawSmoothV = 0f;
+            pitchSmoothV = 0f;
+            camOffset = look.residual;
             transform.eulerAngles = Vector3.up * smoothYaw;
             cam.transform.localRotation = Quaternion.Euler (smoothPitch, 0f, 0f) * camOffset;
 
-            Vector3 transformedVelocity = TransformPortalVelocity (fromPortal, toPortal, GetTotalVelocity ());
-            Vector3 transformedControlledVelocity = TransformPortalVelocity (fromPortal, toPortal, controlledPlanarVelocity);
+            Vector3 transformedVelocity = PortalTransformUtility.TransformDirection (fromPortal, toPortal, GetTotalVelocity ());
+            Vector3 transformedControlledVelocity = PortalTransformUtility.TransformDirection (fromPortal, toPortal, controlledPlanarVelocity);
             SetPortalVelocity (transformedVelocity, transformedControlledVelocity);
 
             Physics.SyncTransforms ();
@@ -186,13 +188,6 @@ namespace PortalKit.Samples
             }
         }
 
-        Vector3 TransformPortalVelocity (Transform fromPortal, Transform toPortal, Vector3 sourceVelocity) {
-            // Convert velocity to from-portal local space, apply 180° Y flip, then convert to to-portal world space.
-            Vector3 vLocal = fromPortal.InverseTransformVector (sourceVelocity);
-            vLocal = PortalFlip * vLocal;
-            return toPortal.TransformVector (vLocal);
-        }
-
         void SetPortalVelocity (Vector3 transformedVelocity, Vector3 transformedControlledVelocity) {
             verticalVelocity = Vector3.Dot (transformedVelocity, Vector3.up);
 
@@ -207,46 +202,6 @@ namespace PortalKit.Samples
             smoothV = Vector3.zero;
             grounded = false;
             velocity = GetTotalVelocity ();
-        }
-
-        void SetClosestUprightLook (Quaternion target) {
-            const float minFlatSqrMagnitude = 1e-6f;
-
-            Vector3 forward = target * Vector3.forward;
-            Vector3 up = target * Vector3.up;
-
-            float targetPitch = -Mathf.Asin (Mathf.Clamp (forward.y, -1f, 1f)) * Mathf.Rad2Deg;
-            targetPitch = Mathf.Clamp (targetPitch, pitchMinMax.x, pitchMinMax.y);
-
-            // Heading can follow where the view points, or where the top of the screen points.
-            // The second wins when looking steeply up/down (e.g. floor-to-floor), avoiding a 180° spin.
-            Vector3 headingFromForward = Vector3.ProjectOnPlane (forward, Vector3.up);
-            Vector3 headingFromUp = Vector3.ProjectOnPlane (up, Vector3.up) * ((forward.y > 0f) ? -1f : 1f);
-
-            float bestYaw = smoothYaw;
-            float bestAngle = float.MaxValue;
-            foreach (Vector3 heading in new[] { headingFromForward, headingFromUp }) {
-                if (heading.sqrMagnitude < minFlatSqrMagnitude) {
-                    continue;
-                }
-                float candidateYaw = Mathf.Atan2 (heading.x, heading.z) * Mathf.Rad2Deg;
-                float angle = Quaternion.Angle (UprightCamRotation (candidateYaw, targetPitch), target);
-                if (angle < bestAngle) {
-                    bestAngle = angle;
-                    bestYaw = candidateYaw;
-                }
-            }
-
-            smoothYaw += Mathf.DeltaAngle (smoothYaw, bestYaw);
-            yaw = smoothYaw;
-            pitch = targetPitch;
-            smoothPitch = targetPitch;
-            yawSmoothV = 0f;
-            pitchSmoothV = 0f;
-        }
-
-        static Quaternion UprightCamRotation (float yaw, float pitch) {
-            return Quaternion.Euler (0f, yaw, 0f) * Quaternion.Euler (pitch, 0f, 0f);
         }
 
     }
