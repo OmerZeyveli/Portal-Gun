@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace PortalKit.VFX
 {
+    /// <summary>Listens to <see cref="PortalGun.Fired"/> and draws a travelling beam from the view model's muzzle (or the gun) to the hit point.</summary>
     public class PortalShotVfx : MonoBehaviour
     {
         [Header("Timing")]

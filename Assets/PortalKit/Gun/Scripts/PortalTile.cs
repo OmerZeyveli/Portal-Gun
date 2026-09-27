@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace PortalKit.Gun
 {
+    /// <summary>Marks a surface as portalable and registers it with <see cref="PortalGrid"/> for neighbor lookups.</summary>
     public class PortalTile : MonoBehaviour
     {
         public enum Axis

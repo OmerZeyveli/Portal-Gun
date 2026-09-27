@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace PortalKit.VFX
 {
+    /// <summary>Listens to <see cref="Portal.Opened"/> and plays a screen pulse, expanding ring and particle burst.</summary>
     public class PortalOpenVfx : MonoBehaviour
     {
         [Header("Pulse")]

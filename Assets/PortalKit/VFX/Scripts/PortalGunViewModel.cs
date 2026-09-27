@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace PortalKit.VFX
 {
+    /// <summary>First-person gun model rendered on its own layer/camera; listens to <see cref="PortalGun.Fired"/> to play recoil.</summary>
     public class PortalGunViewModel : MonoBehaviour
     {
         const string ViewModelLayerName = "ViewModel";

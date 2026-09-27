@@ -4,42 +4,57 @@ using UnityEngine;
 
 namespace PortalKit.Gun
 {
+    /// <summary>
+    /// Aims from the centre of the screen and places two-tile portals on <see cref="PortalTile"/> surfaces,
+    /// using <see cref="PortalGrid"/> to find the paired tile and <see cref="PortalOccupancy"/> to reserve them.
+    /// </summary>
     public class PortalGun : MonoBehaviour
     {
         [Header("References")]
+        /// <summary>Camera used to aim from the center of the screen. Defaults to Camera.main if empty.</summary>
         [Tooltip("Camera used to aim from the center of the screen. Defaults to Camera.main if empty.")]
         public Camera cam;
 
+        /// <summary>Layers that are allowed to receive portals. Placement still also requires a PortalTile.</summary>
         [Tooltip("Layers that are allowed to receive portals. Placement still also requires a PortalTile.")]
         public LayerMask portalableMask;
 
+        /// <summary>Blue portal instance that gets moved when left-click places successfully.</summary>
         [Tooltip("Blue portal instance that gets moved when left-click places successfully.")]
         public Portal bluePortal;
 
+        /// <summary>Orange portal instance that gets moved when right-click places successfully.</summary>
         [Tooltip("Orange portal instance that gets moved when right-click places successfully.")]
         public Portal orangePortal;
 
         [Header("Placement")]
+        /// <summary>Maximum distance for both placement and shot feedback raycasts.</summary>
         [Tooltip("Maximum distance for both placement and shot feedback raycasts.")]
         public float maxDistance = 200f;
 
+        /// <summary>Layers the shot beam can hit for feedback. Use this to show lasers on normal walls too.</summary>
         [Tooltip("Layers the shot beam can hit for feedback. Use this to show lasers on normal walls too.")]
         public LayerMask shotMask = Physics.DefaultRaycastLayers;
 
+        /// <summary>How far the portal should sit in front of the hit surface (meters).</summary>
         [Tooltip("How far the portal should sit in front of the hit surface (meters).")]
         public float forwardOffset = 0.02f;
 
+        /// <summary>If the portal prefab pivot is at its base, shift the portal down along portalUp by this many tile sizes.</summary>
         [Tooltip("If the portal prefab pivot is at its base, shift the portal down along portalUp by this many tile sizes.")]
         public float pivotDownTiles = 1f;
 
         [Header("Colors")]
+        /// <summary>Color reported with blue shots. Effects use it for beams, gun accents and the crosshair.</summary>
         [Tooltip("Color reported with blue shots. Effects use it for beams, gun accents and the crosshair.")]
         public Color bluePortalColor = new Color(0.15f, 0.55f, 1f, 1f);
 
+        /// <summary>Color reported with orange shots. Effects use it for beams, gun accents and the crosshair.</summary>
         [Tooltip("Color reported with orange shots. Effects use it for beams, gun accents and the crosshair.")]
         public Color orangePortalColor = new Color(1f, 0.35f, 0.05f, 1f);
 
         [Header("Input")]
+        /// <summary>When true, the script reads left/right mouse buttons itself. Disable to drive firing from your own input system via <see cref="FireBlue"/> / <see cref="FireOrange"/>.</summary>
         [Tooltip("When true, the script reads left/right mouse buttons itself. Disable to drive firing from your own input system via FireBlue() / FireOrange().")]
         public bool inputEnabled = true;
 
@@ -128,6 +143,7 @@ namespace PortalKit.Gun
         /// <summary>True when firing <paramref name="slot"/> right now would place a portal.</summary>
         public bool CanPlace(PortalSlot slot) => TryEvaluatePlacement(GetPortal(slot), false, out _);
 
+        /// <summary>Color associated with the given slot (<see cref="bluePortalColor"/> or <see cref="orangePortalColor"/>).</summary>
         public Color GetColor(PortalSlot slot) => slot == PortalSlot.Blue ? bluePortalColor : orangePortalColor;
 
         Portal GetPortal(PortalSlot slot) => slot == PortalSlot.Blue ? bluePortal : orangePortal;

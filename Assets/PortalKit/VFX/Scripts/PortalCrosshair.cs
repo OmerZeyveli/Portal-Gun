@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace PortalKit.VFX
 {
+    /// <summary>Builds a screen-space crosshair and polls <see cref="PortalGun.GetColor"/> / <see cref="PortalGun.CanPlace"/> each frame to color and fill its indicators.</summary>
     [DisallowMultipleComponent]
     public class PortalCrosshair : MonoBehaviour
     {

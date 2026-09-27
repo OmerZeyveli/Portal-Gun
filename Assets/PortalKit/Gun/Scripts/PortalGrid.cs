@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace PortalKit.Gun
 {
+    /// <summary>Singleton lookup from world-grid coordinates to the registered <see cref="PortalTile"/> at that coordinate.</summary>
     public class PortalGrid : MonoBehaviour
     {
         public static PortalGrid Instance { get; private set; }

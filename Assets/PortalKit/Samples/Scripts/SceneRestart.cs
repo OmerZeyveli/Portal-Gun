@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace PortalKit.Samples
 {
+    /// <summary>Sample utility: reloads the active scene when <see cref="restartKey"/> is pressed.</summary>
     public class SceneRestart : MonoBehaviour
     {
         [Tooltip("Key that reloads the active scene.")]

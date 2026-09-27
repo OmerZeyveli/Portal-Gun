@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace PortalKit.Gun
 {
+    /// <summary>Tracks the two <see cref="PortalTile"/>s a portal currently occupies so other portals cannot place on top of them.</summary>
     [DisallowMultipleComponent]
     public class PortalOccupancy : MonoBehaviour
     {
