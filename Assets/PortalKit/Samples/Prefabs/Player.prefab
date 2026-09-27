@@ -57,7 +57,7 @@ MonoBehaviour:
   groundedMomentumDamping: 8
   minMomentumSpeed: 0.05
   lockCursor: 1
-  mouseSensitivity: 11
+  mouseSensitivity: 2.75
   pitchMinMax: {x: -85, y: 85}
   rotationSmoothTime: 0.1
   cameraRealignSharpness: 8

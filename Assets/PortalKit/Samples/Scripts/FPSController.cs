@@ -19,7 +19,7 @@ namespace PortalKit.Samples
         public float minMomentumSpeed = 0.05f;
 
         public bool lockCursor;
-        public float mouseSensitivity = 10;
+        public float mouseSensitivity = 2.5f;
         public Vector2 pitchMinMax = new Vector2(-40, 85);
         public float rotationSmoothTime = 0.1f;
         public float cameraRealignSharpness = 8f;
