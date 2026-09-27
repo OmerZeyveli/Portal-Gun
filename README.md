@@ -8,7 +8,7 @@ A first-person portal-shooter sandbox built in Unity, inspired by Valve's *Porta
 ## Features
 
 - Real-time portal rendering ported from Sebastian Lague's open-source portal project.
-- Split into independent modules (Core / Gun / VFX / Samples) — take only the pieces you need.
+- Split into independent assemblies (`PortalKit.Core`, `.Gun`, `.VFX`, `.Samples`); Core has no dependencies, so you can take only the pieces you need.
 - Portal gun with beam VFX, open VFX, and a first-person view-model.
 - Tile-based, grid-snapped portal placement.
 - FPS controller with walk/run/jump and momentum carry-through portals.
@@ -18,8 +18,11 @@ A first-person portal-shooter sandbox built in Unity, inspired by Valve's *Porta
 
 - **Unity 2022.3.62f3**.
 - Built-in render pipeline.
-- Four independent assemblies (PortalKit.Core, PortalKit.Gun, PortalKit.VFX, PortalKit.Samples); Core has no dependencies, so you can take only the modules you need.
 
+## Getting Started
+
+1. Clone the repository and open the folder with Unity 2022.3.62f3.
+2. Open `Assets/PortalKit/Samples/Scenes/Level 1.unity` and press Play.
 
 ## Controls
 
@@ -48,7 +51,7 @@ Assets/PortalKit/
 └── Tests/    EditMode tests for the travel math and aperture mesh
 ```
 
-Each folder is its own assembly, so a module can never depend on a module below it in this list.
+Each folder is its own assembly. Dependencies only point up this list (Gun uses Core, VFX uses Core and Gun), so Core never depends on the gun or the effects.
 
 ## Using PortalKit in Your Own Game
 
@@ -99,6 +102,10 @@ public override void Teleport(Transform fromPortal, Transform toPortal, Vector3 
 ### Removing the effects
 
 Delete `Assets/PortalKit/VFX` (and `Samples`, which uses them). Core and Gun still compile and work.
+
+## Running the Tests
+
+Open **Window → General → Test Runner**, select **EditMode** and press **Run All**. The tests cover the portal travel math (`PortalTransformUtility`), the aperture mesh and `Portal.PlaceAt`.
 
 ## Credits
 
