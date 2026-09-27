@@ -237,7 +237,6 @@ namespace PortalKit.Core
         }
 
         /// <summary>Called before any portal cameras are rendered for the current frame.</summary>
-        // Called before any portal cameras are rendered for the current frame
         public void PrePortalRender()
         {
             foreach (var traveller in trackedTravellers)
@@ -247,8 +246,6 @@ namespace PortalKit.Core
         }
 
         /// <summary>Manually renders the camera attached to this portal. Called after <see cref="PrePortalRender"/> and before <see cref="PostPortalRender"/>.</summary>
-        // Manually render the camera attached to this portal
-        // Called after PrePortalRender, and before PostPortalRender
         public void Render()
         {
 
@@ -378,7 +375,6 @@ namespace PortalKit.Core
         }
 
         /// <summary>Called once all portals have been rendered, but before the player camera renders.</summary>
-        // Called once all portals have been rendered, but before the player camera renders
         public void PostPortalRender()
         {
             foreach (var traveller in trackedTravellers)

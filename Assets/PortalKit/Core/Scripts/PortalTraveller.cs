@@ -26,7 +26,6 @@ namespace PortalKit.Core
         }
 
         /// <summary>Called when the traveller first touches a portal.</summary>
-        // Called when first touches portal
         public virtual void EnterPortalThreshold()
         {
             if (graphicsClone == null)
@@ -44,7 +43,6 @@ namespace PortalKit.Core
         }
 
         /// <summary>Called once the traveller is no longer touching a portal (excluding when teleporting).</summary>
-        // Called once no longer touching portal (excluding when teleporting)
         public virtual void ExitPortalThreshold()
         {
             graphicsClone.SetActive(false);

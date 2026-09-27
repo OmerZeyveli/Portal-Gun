@@ -18,6 +18,7 @@ A first-person portal-shooter sandbox built in Unity, inspired by Valve's *Porta
 
 - **Unity 2022.3.62f3**.
 - Built-in render pipeline.
+- Four independent assemblies (PortalKit.Core, PortalKit.Gun, PortalKit.VFX, PortalKit.Samples); Core has no dependencies, so you can take only the modules you need.
 
 
 ## Controls
