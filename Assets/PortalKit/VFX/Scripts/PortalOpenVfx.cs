@@ -34,6 +34,9 @@ namespace PortalKit.VFX
         [Tooltip("Resolution of the temporary expanding ring.")]
         public int ringSegments = 64;
 
+        [Tooltip("Burst color used when the portal has no PortalRim.")]
+        public Color color = Color.white;
+
         readonly List<Transform> pulseTransforms = new();
         readonly List<Vector3> baseScales = new();
         Material ringMaterial;
@@ -45,6 +48,29 @@ namespace PortalKit.VFX
         void Awake()
         {
             CacheVisuals();
+        }
+
+        void OnEnable()
+        {
+            portal = GetComponent<Portal>();
+            if (portal)
+            {
+                portal.Opened += HandleOpened;
+            }
+        }
+
+        void OnDisable()
+        {
+            if (portal)
+            {
+                portal.Opened -= HandleOpened;
+            }
+        }
+
+        void HandleOpened(Portal openedPortal)
+        {
+            PortalRim rim = GetComponent<PortalRim>();
+            PlayOpen(rim ? rim.portalColor : color);
         }
 
         public void PlayOpen(Color color)

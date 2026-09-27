@@ -1,5 +1,5 @@
 using PortalKit.Core;
-using PortalKit.VFX;
+using System;
 using UnityEngine;
 
 namespace PortalKit.Gun
@@ -32,32 +32,11 @@ namespace PortalKit.Gun
         [Tooltip("If the portal prefab pivot is at its base, shift the portal down along portalUp by this many tile sizes.")]
         public float pivotDownTiles = 1f;
 
-        [Header("Visuals")]
-        [Tooltip("Creates missing view-model, shot, and open VFX helpers at runtime.")]
-        public bool autoCreateVisuals = true;
-
-        [Tooltip("Optional first-person portal gun model/VFX controller.")]
-        public PortalGunViewModel viewModel;
-
-        [Tooltip("Beam/tracer VFX played for every shot hit or miss.")]
-        public PortalShotVfx shotVfx;
-
-        [Tooltip("Shows the procedural portal placement crosshair.")]
-        public bool showCrosshair = true;
-
-        [Tooltip("Optional procedural crosshair. Created at runtime when empty and autoCreateVisuals is enabled.")]
-        public PortalCrosshair crosshair;
-
-        [Tooltip("Open burst played on the blue portal after successful placement.")]
-        public PortalOpenVfx blueOpenVfx;
-
-        [Tooltip("Open burst played on the orange portal after successful placement.")]
-        public PortalOpenVfx orangeOpenVfx;
-
-        [Tooltip("Color used by blue shot/open/portal visuals.")]
+        [Header("Colors")]
+        [Tooltip("Color reported with blue shots. Effects use it for beams, gun accents and the crosshair.")]
         public Color bluePortalColor = new Color(0.15f, 0.55f, 1f, 1f);
 
-        [Tooltip("Color used by orange shot/open/portal visuals.")]
+        [Tooltip("Color reported with orange shots. Effects use it for beams, gun accents and the crosshair.")]
         public Color orangePortalColor = new Color(1f, 0.35f, 0.05f, 1f);
 
         [Header("Input")]
@@ -65,7 +44,6 @@ namespace PortalKit.Gun
         public bool inputEnabled = true;
 
         PortalGrid grid;
-        bool viewModelInitialized;
 
         struct PortalPlacementResult
         {
@@ -79,6 +57,9 @@ namespace PortalKit.Gun
             public PortalTile topTile;
         }
 
+        /// <summary>Raised after every shot, whether or not a portal was placed.</summary>
+        public event Action<PortalShot> Fired;
+
         void Awake()
         {
             if (!cam) cam = Camera.main;
@@ -86,20 +67,12 @@ namespace PortalKit.Gun
 
             EnsureOccupancy(bluePortal);
             EnsureOccupancy(orangePortal);
-            EnsureVisuals();
         }
 
         void Start()
         {
             // Script execution order can make Instance null in Awake; retry on Start.
-            if (grid == null)
-            {
-                grid = PortalGrid.Instance;
-                if (grid == null)
-                    grid = FindObjectOfType<PortalGrid>(true);
-            }
-
-            EnsureVisuals();
+            EnsureGrid();
         }
 
         void EnsureOccupancy(Portal p)
@@ -122,149 +95,42 @@ namespace PortalKit.Gun
 
         void Update()
         {
-            UpdateCrosshair();
-
             if (!inputEnabled) return;
-            if (Input.GetMouseButtonDown(0)) FireBlue();
-            if (Input.GetMouseButtonDown(1)) FireOrange();
+            if (Input.GetMouseButtonDown(0)) Fire(PortalSlot.Blue);
+            if (Input.GetMouseButtonDown(1)) Fire(PortalSlot.Orange);
         }
 
         /// <summary>Fires the blue portal. Call this from your own input handler when inputEnabled is false.</summary>
-        public void FireBlue() => FirePortal(bluePortal, bluePortalColor);
+        public bool FireBlue() => Fire(PortalSlot.Blue);
 
         /// <summary>Fires the orange portal. Call this from your own input handler when inputEnabled is false.</summary>
-        public void FireOrange() => FirePortal(orangePortal, orangePortalColor);
+        public bool FireOrange() => Fire(PortalSlot.Orange);
 
-        void EnsureVisuals()
+        /// <summary>Shoots from the centre of the screen, places the slot's portal if possible and raises <see cref="Fired"/>.</summary>
+        /// <returns>True when a portal was placed.</returns>
+        public bool Fire(PortalSlot slot)
         {
-            if (!cam) cam = Camera.main;
+            bool placed = TryPlace(GetPortal(slot), out PortalPlacementResult result);
 
-            if (autoCreateVisuals && !viewModel && cam)
+            Fired?.Invoke(new PortalShot
             {
-                viewModel = cam.GetComponentInChildren<PortalGunViewModel>(true);
-                if (!viewModel)
-                {
-                    GameObject viewModelObject = new GameObject("PortalGunViewModel");
-                    viewModel = viewModelObject.AddComponent<PortalGunViewModel>();
-                }
-            }
+                slot = slot,
+                color = GetColor(slot),
+                origin = cam ? cam.transform.position : transform.position,
+                hitPoint = result.hitPoint,
+                hitNormal = result.hitNormal,
+                placed = placed
+            });
 
-            if (viewModel && !viewModelInitialized)
-            {
-                viewModel.Initialize(cam, bluePortalColor);
-                viewModelInitialized = true;
-            }
-
-            if (autoCreateVisuals && !shotVfx)
-            {
-                shotVfx = GetComponent<PortalShotVfx>();
-                if (!shotVfx)
-                    shotVfx = gameObject.AddComponent<PortalShotVfx>();
-            }
-
-            if (showCrosshair)
-                EnsureCrosshair();
-            ConfigureCrosshair();
-
-            if (autoCreateVisuals)
-            {
-                blueOpenVfx = EnsureOpenVfx(bluePortal, blueOpenVfx);
-                orangeOpenVfx = EnsureOpenVfx(orangePortal, orangeOpenVfx);
-            }
+            return placed;
         }
 
-        PortalOpenVfx EnsureOpenVfx(Portal portal, PortalOpenVfx current)
-        {
-            if (current || !portal)
-                return current;
+        /// <summary>True when firing <paramref name="slot"/> right now would place a portal.</summary>
+        public bool CanPlace(PortalSlot slot) => TryEvaluatePlacement(GetPortal(slot), false, out _);
 
-            var openVfx = portal.GetComponent<PortalOpenVfx>();
-            if (!openVfx)
-                openVfx = portal.gameObject.AddComponent<PortalOpenVfx>();
+        public Color GetColor(PortalSlot slot) => slot == PortalSlot.Blue ? bluePortalColor : orangePortalColor;
 
-            return openVfx;
-        }
-
-        PortalCrosshair EnsureCrosshair()
-        {
-            if (crosshair)
-                return crosshair;
-
-            crosshair = GetComponentInChildren<PortalCrosshair>(true);
-            if (crosshair || !autoCreateVisuals)
-                return crosshair;
-
-            GameObject crosshairObject = new GameObject("PortalCrosshair");
-            crosshairObject.transform.SetParent(transform, false);
-            crosshair = crosshairObject.AddComponent<PortalCrosshair>();
-            return crosshair;
-        }
-
-        void ConfigureCrosshair()
-        {
-            if (!crosshair)
-                return;
-
-            crosshair.SetColors(bluePortalColor, orangePortalColor);
-            crosshair.gameObject.SetActive(showCrosshair);
-        }
-
-        void UpdateCrosshair()
-        {
-            if (!showCrosshair)
-            {
-                if (crosshair && crosshair.gameObject.activeSelf)
-                    crosshair.gameObject.SetActive(false);
-                return;
-            }
-
-            if (!crosshair)
-                EnsureCrosshair();
-            if (!crosshair)
-                return;
-
-            if (!crosshair.gameObject.activeSelf)
-                crosshair.gameObject.SetActive(true);
-
-            crosshair.SetColors(bluePortalColor, orangePortalColor);
-            crosshair.SetAvailability(CanPlacePortal(bluePortal), CanPlacePortal(orangePortal));
-        }
-
-        bool CanPlacePortal(Portal portal)
-        {
-            PortalPlacementResult result;
-            return TryEvaluatePlacement(portal, false, out result);
-        }
-
-        void FirePortal(Portal portal, Color color)
-        {
-            EnsureVisuals();
-
-            if (viewModel)
-                viewModel.PlayFire(color);
-
-            PortalPlacementResult result;
-            bool placed = TryPlace(portal, out result);
-            Vector3 muzzlePosition = GetMuzzlePosition();
-            PortalOpenVfx openVfx = portal == bluePortal ? blueOpenVfx : orangeOpenVfx;
-
-            if (shotVfx)
-                shotVfx.PlayShot(muzzlePosition, result.hitPoint, color, placed);
-
-            if (placed && openVfx)
-                openVfx.PlayOpen(color);
-        }
-
-        Vector3 GetMuzzlePosition()
-        {
-            if (viewModel)
-                return viewModel.Muzzle.position;
-
-            if (cam)
-                return cam.transform.position + cam.transform.forward * 0.5f;
-
-            return transform.position + transform.forward * 0.5f;
-        }
+        Portal GetPortal(PortalSlot slot) => slot == PortalSlot.Blue ? bluePortal : orangePortal;
 
         PortalPlacementResult CreateDefaultResult()
         {
@@ -292,7 +158,7 @@ namespace PortalKit.Gun
                 return false;
             }
 
-            portal.transform.SetPositionAndRotation(result.portalPosition, result.portalRotation);
+            portal.PlaceAt(result.portalPosition, result.portalRotation);
             return true;
         }
 

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using PortalKit.Core;
+using PortalKit.Gun;
 using UnityEngine;
 
 namespace PortalKit.VFX
@@ -28,6 +29,8 @@ namespace PortalKit.VFX
         float recoilVelocity;
         Material accentMaterial;
         readonly List<Renderer> accentRenderers = new();
+        PortalGun gun;
+        bool initialized;
 
         public Transform Muzzle => muzzle ? muzzle : transform;
 
@@ -50,6 +53,44 @@ namespace PortalKit.VFX
             ConfigureViewModelRendering(ownerCamera);
             SetAccentColor(initialAccent);
             ApplyPose();
+            initialized = true;
+        }
+
+        void OnEnable()
+        {
+            gun = GetComponentInParent<PortalGun>();
+            if (gun)
+            {
+                gun.Fired += HandleFired;
+            }
+        }
+
+        void OnDisable()
+        {
+            if (gun)
+            {
+                gun.Fired -= HandleFired;
+            }
+        }
+
+        void Start()
+        {
+            if (initialized)
+            {
+                return;
+            }
+
+            Camera ownerCamera = GetComponentInParent<Camera>();
+            if (!ownerCamera)
+            {
+                ownerCamera = Camera.main;
+            }
+            Initialize(ownerCamera, gun ? gun.GetColor(PortalSlot.Blue) : Color.white);
+        }
+
+        void HandleFired(PortalShot shot)
+        {
+            PlayFire(shot.color);
         }
 
         public void PlayFire(Color accent)

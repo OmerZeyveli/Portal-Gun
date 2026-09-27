@@ -1,4 +1,5 @@
 using PortalKit.Core;
+using PortalKit.Gun;
 using UnityEngine.UI;
 using UnityEngine;
 
@@ -38,6 +39,7 @@ namespace PortalKit.VFX
         bool built;
         bool blueAvailable;
         bool orangeAvailable;
+        PortalGun gun;
 
         const int IndicatorTextureScale = 4;
 
@@ -62,6 +64,7 @@ namespace PortalKit.VFX
 
         void Awake()
         {
+            gun = GetComponentInParent<PortalGun>();
             Build();
         }
 
@@ -69,6 +72,17 @@ namespace PortalKit.VFX
         {
             Build();
             ApplyAvailability();
+        }
+
+        void Update()
+        {
+            if (!gun)
+            {
+                return;
+            }
+
+            SetColors(gun.GetColor(PortalSlot.Blue), gun.GetColor(PortalSlot.Orange));
+            SetAvailability(gun.CanPlace(PortalSlot.Blue), gun.CanPlace(PortalSlot.Orange));
         }
 
         public void SetColors(Color blue, Color orange)

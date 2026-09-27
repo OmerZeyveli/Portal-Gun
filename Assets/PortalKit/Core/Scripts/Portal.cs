@@ -14,6 +14,9 @@ namespace PortalKit.Core
         public float nearClipOffset = 0.05f;
         public float nearClipLimit = 0.2f;
 
+        /// <summary>Raised by <see cref="PlaceAt"/> after the portal has moved to a new spot.</summary>
+        public event System.Action<Portal> Opened;
+
         // Private variables
         RenderTexture viewTexture;
         Camera portalCam;
@@ -55,6 +58,12 @@ namespace PortalKit.Core
 
         void LateUpdate () {
             HandleTravellers ();
+        }
+
+        /// <summary>Moves the portal and raises <see cref="Opened"/>. Use this instead of setting the transform directly.</summary>
+        public void PlaceAt (Vector3 position, Quaternion rotation) {
+            transform.SetPositionAndRotation (position, rotation);
+            Opened?.Invoke (this);
         }
 
         void HandleTravellers () {

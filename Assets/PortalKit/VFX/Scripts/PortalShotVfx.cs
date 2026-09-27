@@ -1,5 +1,6 @@
 using System.Collections;
 using PortalKit.Core;
+using PortalKit.Gun;
 using UnityEngine;
 
 namespace PortalKit.VFX
@@ -34,6 +35,35 @@ namespace PortalKit.VFX
         public float invalidLightIntensity = 1.6f;
 
         Material lineMaterial;
+
+        PortalGun gun;
+        PortalGunViewModel viewModel;
+
+        void OnEnable()
+        {
+            gun = GetComponentInParent<PortalGun>();
+            viewModel = gun ? gun.GetComponentInChildren<PortalGunViewModel>(true) : null;
+            if (gun)
+            {
+                gun.Fired += HandleFired;
+            }
+        }
+
+        void OnDisable()
+        {
+            if (gun)
+            {
+                gun.Fired -= HandleFired;
+            }
+        }
+
+        void HandleFired(PortalShot shot)
+        {
+            Vector3 start = viewModel
+                ? viewModel.Muzzle.position
+                : shot.origin + (shot.hitPoint - shot.origin).normalized * 0.5f;
+            PlayShot(start, shot.hitPoint, shot.color, shot.placed);
+        }
 
         public void PlayShot(Vector3 start, Vector3 end, Color color, bool success)
         {
