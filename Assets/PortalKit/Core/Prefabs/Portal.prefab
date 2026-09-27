@@ -178,12 +178,9 @@ GameObject:
   - component: {fileID: 3078014722881510356}
   - component: {fileID: 3783457512964930153}
   - component: {fileID: 7771388848863017647}
-  - component: {fileID: 7754542510656223185}
-  - component: {fileID: 644309828502298977}
-  - component: {fileID: 4100000000000001001}
   - component: {fileID: 317042248762290956}
   m_Layer: 0
-  m_Name: BluePortal
+  m_Name: Portal
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -198,7 +195,7 @@ Transform:
   m_GameObject: {fileID: 7297071834087518550}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -11.25, y: -0.06, z: 10}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -271,60 +268,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 2, z: 1.5}
   m_Center: {x: 0, y: 1, z: 0}
---- !u!114 &7754542510656223185
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7297071834087518550}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e7db55115f9ad0d4cbac647e8bbeb50c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &644309828502298977
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7297071834087518550}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 60ef79f593a14bcf8063f6dd958f384f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  duration: 0.28
-  framePulseScale: 0.08
-  ringWidth: 0.055
-  ringXRadius: 0.55
-  ringYRadius: 1.08
-  lightRange: 3
-  lightIntensity: 3.5
-  ringSegments: 64
---- !u!114 &4100000000000001001
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7297071834087518550}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bc877d6f6ce9424ab26bf8cbcb536d21, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  portalColor: {r: 0.15, g: 0.55, b: 1, a: 1}
-  energyShader: {fileID: 4800000, guid: df272b8c7f6b409faa25005bc228b1b4, type: 3}
-  centerY: 1
-  segments: 64
-  rimInnerRadius: {x: 0.49, y: 0.98}
-  rimOuterRadius: {x: 0.58, y: 1.1}
-  haloOuterRadius: {x: 0.68, y: 1.24}
-  rimZOffset: 0.045
-  lightRange: 0
-  lightIntensity: 0
 --- !u!114 &317042248762290956
 MonoBehaviour:
   m_ObjectHideFlags: 0
