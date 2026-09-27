@@ -1,6 +1,6 @@
 # Portal Gun
 
-A first-person portal-shooter sandbox built in Unity, inspired by Valve's *Portal*. Shoot a blue and an orange portal on tagged surfaces, walk through, and carry your momentum.
+A first-person portal-shooter sandbox built in Unity, inspired by Valve's *Portal*. Shoot a blue and an orange portal on surfaces built from `PortalTile` prefabs on the portalable layer, walk through, and carry your momentum.
 
 <!-- TODO: replace with a gameplay GIF or screenshot -->
 <!-- ![Gameplay](docs/gameplay.gif) -->
@@ -60,6 +60,9 @@ Each folder is its own assembly, so a module can never depend on a module below 
 4. Add **Portal Traveller** (or a subclass) to every object that should pass through, and set its **Graphics Object**. Use the `Slice` shader on its materials so it is cut cleanly at the portal.
 5. Moving a portal from code: call `portal.PlaceAt(position, rotation)`.
 
+- A traveller also needs a `Collider` (or `CharacterController`) so the portal's trigger can detect it.
+- Portals find the player camera via `Camera.main`, so that camera needs the `MainCamera` tag and a `PortalRenderer` component.
+
 ### Your own character controller
 
 Override `PortalTraveller.Teleport` and use `PortalTransformUtility`:
@@ -84,10 +87,14 @@ public override void Teleport(Transform fromPortal, Transform toPortal, Vector3 
 3. Add `PortalGun` under your camera and assign the two portals, `Portalable Mask` and `Shot Mask`.
 4. React to shots from your own code with `gun.Fired += shot => ...`, or poll `gun.CanPlace(slot)`.
 
+- To drive firing from your own input instead of the built-in mouse handling, set `gun.inputEnabled = false` and call `gun.FireBlue()` / `gun.FireOrange()` (or `gun.Fire(PortalSlot.Blue)`).
+
 ### Adding the effects
 
 1. Also copy `Assets/PortalKit/VFX`.
 2. Put `PortalShotVfx` and `PortalCrosshair` on the gun's GameObject, `PortalGunViewModel` on the gun model under it, and `PortalRim` + `PortalOpenVfx` on each portal. They find the gun/portal themselves.
+
+- `PortalGunViewModel` expects a layer named `ViewModel`; without it, it logs a warning and the gun model can clip into walls.
 
 ### Removing the effects
 

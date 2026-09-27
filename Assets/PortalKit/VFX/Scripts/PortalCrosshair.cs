@@ -72,7 +72,31 @@ namespace PortalKit.VFX
         void OnEnable()
         {
             Build();
+            if (canvas)
+                canvas.gameObject.SetActive(true);
             ApplyAvailability();
+        }
+
+        void OnDisable()
+        {
+            if (canvas)
+                canvas.gameObject.SetActive(false);
+        }
+
+        void OnDestroy()
+        {
+            DestroySprite(filledIndicatorSprite);
+            DestroySprite(outlineIndicatorSprite);
+        }
+
+        static void DestroySprite(Sprite sprite)
+        {
+            if (!sprite)
+                return;
+
+            if (sprite.texture)
+                Destroy(sprite.texture);
+            Destroy(sprite);
         }
 
         void Update()

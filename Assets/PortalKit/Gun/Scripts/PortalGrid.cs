@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using PortalKit.Core;
 using UnityEngine;
 
 namespace PortalKit.Gun

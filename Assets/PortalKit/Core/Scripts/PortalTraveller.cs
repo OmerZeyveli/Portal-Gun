@@ -42,14 +42,24 @@ namespace PortalKit.Core
             }
         }
 
-        /// <summary>Called once the traveller is no longer touching a portal (excluding when teleporting).</summary>
+        /// <summary>Called once the traveller is no longer touching a portal (excluding when teleporting).
+        /// Null-safe: <see cref="graphicsClone"/> and <see cref="originalMaterials"/> may not be set yet if
+        /// <see cref="EnterPortalThreshold"/> never ran, e.g. when <see cref="Portal.PlaceAt"/> releases a
+        /// traveller that never fully entered the threshold.</summary>
         public virtual void ExitPortalThreshold()
         {
-            graphicsClone.SetActive(false);
-            // Disable slicing
-            for (int i = 0; i < originalMaterials.Length; i++)
+            if (graphicsClone)
             {
-                originalMaterials[i].SetVector("sliceNormal", Vector3.zero);
+                graphicsClone.SetActive(false);
+            }
+
+            // Disable slicing
+            if (originalMaterials != null)
+            {
+                for (int i = 0; i < originalMaterials.Length; i++)
+                {
+                    originalMaterials[i].SetVector("sliceNormal", Vector3.zero);
+                }
             }
         }
 

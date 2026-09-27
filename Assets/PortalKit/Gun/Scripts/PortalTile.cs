@@ -1,4 +1,3 @@
-using PortalKit.Core;
 using UnityEngine;
 
 namespace PortalKit.Gun

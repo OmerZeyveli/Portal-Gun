@@ -7,6 +7,7 @@ namespace PortalKit.Core
     /// Portal thickens the screen along z so the camera's near plane never clips it while passing through;
     /// that only works if the mesh has depth, which is why this is not a flat quad or disc.
     /// The screen object must be a direct child of the portal.
+    /// Changing <see cref="size"/> or <see cref="shape"/> at runtime requires calling <see cref="Apply"/> to rebuild the mesh.
     /// </summary>
     [RequireComponent(typeof(Portal))]
     [DisallowMultipleComponent]

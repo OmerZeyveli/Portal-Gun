@@ -10,8 +10,8 @@ namespace PortalKit.Gun
     /// </summary>
     public class PortalGun : MonoBehaviour
     {
-        [Header("References")]
         /// <summary>Camera used to aim from the center of the screen. Defaults to Camera.main if empty.</summary>
+        [Header("References")]
         [Tooltip("Camera used to aim from the center of the screen. Defaults to Camera.main if empty.")]
         public Camera cam;
 
@@ -27,8 +27,8 @@ namespace PortalKit.Gun
         [Tooltip("Orange portal instance that gets moved when right-click places successfully.")]
         public Portal orangePortal;
 
-        [Header("Placement")]
         /// <summary>Maximum distance for both placement and shot feedback raycasts.</summary>
+        [Header("Placement")]
         [Tooltip("Maximum distance for both placement and shot feedback raycasts.")]
         public float maxDistance = 200f;
 
@@ -44,8 +44,8 @@ namespace PortalKit.Gun
         [Tooltip("If the portal prefab pivot is at its base, shift the portal down along portalUp by this many tile sizes.")]
         public float pivotDownTiles = 1f;
 
-        [Header("Colors")]
         /// <summary>Color reported with blue shots. Effects use it for beams, gun accents and the crosshair.</summary>
+        [Header("Colors")]
         [Tooltip("Color reported with blue shots. Effects use it for beams, gun accents and the crosshair.")]
         public Color bluePortalColor = new Color(0.15f, 0.55f, 1f, 1f);
 
@@ -53,8 +53,8 @@ namespace PortalKit.Gun
         [Tooltip("Color reported with orange shots. Effects use it for beams, gun accents and the crosshair.")]
         public Color orangePortalColor = new Color(1f, 0.35f, 0.05f, 1f);
 
-        [Header("Input")]
         /// <summary>When true, the script reads left/right mouse buttons itself. Disable to drive firing from your own input system via <see cref="FireBlue"/> / <see cref="FireOrange"/>.</summary>
+        [Header("Input")]
         [Tooltip("When true, the script reads left/right mouse buttons itself. Disable to drive firing from your own input system via FireBlue() / FireOrange().")]
         public bool inputEnabled = true;
 

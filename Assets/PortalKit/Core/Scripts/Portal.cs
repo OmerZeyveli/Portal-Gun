@@ -10,8 +10,8 @@ namespace PortalKit.Core
     /// </summary>
     public class Portal : MonoBehaviour
     {
-        [Header("Main Settings")]
         /// <summary>The other portal this one is paired with. Setting it also links back automatically.</summary>
+        [Header("Main Settings")]
         public Portal linkedPortal;
 
         /// <summary>Mesh renderer the view through <see cref="linkedPortal"/> is drawn onto.</summary>
@@ -20,8 +20,8 @@ namespace PortalKit.Core
         /// <summary>Maximum number of recursive views rendered through the portal.</summary>
         public int recursionLimit = 5;
 
-        [Header("Advanced Settings")]
         /// <summary>Offset added to the portal camera's oblique near clip plane.</summary>
+        [Header("Advanced Settings")]
         public float nearClipOffset = 0.05f;
 
         /// <summary>Below this distance from the portal, the oblique near clip plane is not used, to avoid artifacts.</summary>
@@ -39,14 +39,12 @@ namespace PortalKit.Core
         MeshFilter screenMeshFilter;
 
         static readonly List<Portal> activePortals = new List<Portal>();
-        const string ViewModelLayerName = "ViewModel";
         const float PlaneCrossingEpsilon = 0.0001f;
 
         void Awake()
         {
             playerCam = Camera.main;
             portalCam = GetComponentInChildren<Camera>();
-            ExcludeViewModelLayer(portalCam);
             portalCam.enabled = false;
             trackedTravellers = new List<PortalTraveller>();
             screenMeshFilter = screen.GetComponent<MeshFilter>();
@@ -66,23 +64,25 @@ namespace PortalKit.Core
             activePortals.Remove(this);
         }
 
-        static void ExcludeViewModelLayer(Camera camera)
-        {
-            int viewModelLayer = LayerMask.NameToLayer(ViewModelLayerName);
-            if (camera && viewModelLayer >= 0)
-            {
-                camera.cullingMask &= ~(1 << viewModelLayer);
-            }
-        }
-
         void LateUpdate()
         {
             HandleTravellers();
         }
 
-        /// <summary>Moves the portal and raises <see cref="Opened"/>. Use this instead of setting the transform directly.</summary>
+        /// <summary>Moves the portal and raises <see cref="Opened"/>. Use this instead of setting the transform directly.
+        /// Releases any travellers currently tracked in the trigger at the old spot first, since their
+        /// previousOffsetFromPortal was measured there and would otherwise cause a bad teleport through the relocated portal.</summary>
         public void PlaceAt(Vector3 position, Quaternion rotation)
         {
+            if (trackedTravellers != null)
+            {
+                foreach (var traveller in trackedTravellers)
+                {
+                    traveller.ExitPortalThreshold();
+                }
+                trackedTravellers.Clear();
+            }
+
             transform.SetPositionAndRotation(position, rotation);
             Opened?.Invoke(this);
         }
@@ -254,6 +254,10 @@ namespace PortalKit.Core
             {
                 return;
             }
+
+            // The portal camera sees exactly what the player camera sees, so effects that hide a layer
+            // from the player camera (like the gun view model) are hidden through portals too.
+            portalCam.cullingMask = playerCam.cullingMask;
 
             CreateViewTexture();
 

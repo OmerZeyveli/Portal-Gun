@@ -30,7 +30,10 @@ namespace PortalKit.VFX
         float recoilVelocity;
         Material accentMaterial;
         readonly List<Renderer> accentRenderers = new();
-        PortalGun gun;
+
+        [Tooltip("Gun whose shots drive recoil. Found in parents when empty.")]
+        public PortalGun gun;
+
         bool initialized;
 
         public Transform Muzzle => muzzle ? muzzle : transform;
@@ -59,10 +62,18 @@ namespace PortalKit.VFX
 
         void OnEnable()
         {
-            gun = GetComponentInParent<PortalGun>();
+            if (!gun)
+            {
+                gun = GetComponentInParent<PortalGun>();
+            }
+
             if (gun)
             {
                 gun.Fired += HandleFired;
+            }
+            else
+            {
+                Debug.LogWarning("[PortalGunViewModel] No PortalGun assigned or found in parents; recoil will not trigger.", this);
             }
         }
 
