@@ -1,0 +1,16 @@
+{
+    "name": "PortalKit.Gun",
+    "rootNamespace": "PortalKit.Gun",
+    "references": [
+        "PortalKit.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

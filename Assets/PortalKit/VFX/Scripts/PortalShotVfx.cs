@@ -1,0 +1,169 @@
+using System.Collections;
+using PortalKit.Core;
+using PortalKit.Gun;
+using UnityEngine;
+
+namespace PortalKit.VFX
+{
+    /// <summary>Listens to <see cref="PortalGun.Fired"/> and draws a travelling beam from the view model's muzzle (or the gun) to the hit point.</summary>
+    public class PortalShotVfx : MonoBehaviour
+    {
+        [Header("Timing")]
+        [Tooltip("Time for the beam head to travel from the muzzle to the hit point.")]
+        public float travelTime = 0.08f;
+
+        [Tooltip("Time for the beam to fade after it reaches the hit point.")]
+        public float fadeTime = 0.12f;
+
+        [Tooltip("Maximum visible length of the beam trail while it travels.")]
+        public float trailLength = 4f;
+
+        [Header("Beam Width")]
+        [Tooltip("Beam width for shots that successfully place a portal.")]
+        public float validWidth = 0.075f;
+
+        [Tooltip("Beam width for shots that hit something but cannot place a portal.")]
+        public float invalidWidth = 0.055f;
+
+        [Header("Light")]
+        [Tooltip("Range of the temporary point light that follows the beam head.")]
+        public float lightRange = 2.2f;
+
+        [Tooltip("Temporary light intensity for successful portal shots.")]
+        public float validLightIntensity = 2.8f;
+
+        [Tooltip("Temporary light intensity for non-portalable hits.")]
+        public float invalidLightIntensity = 1.6f;
+
+        Material lineMaterial;
+
+        PortalGun gun;
+        PortalGunViewModel viewModel;
+
+        void OnEnable()
+        {
+            gun = GetComponentInParent<PortalGun>();
+            viewModel = gun ? gun.GetComponentInChildren<PortalGunViewModel>(true) : null;
+            if (gun)
+            {
+                gun.Fired += HandleFired;
+            }
+        }
+
+        void OnDisable()
+        {
+            if (gun)
+            {
+                gun.Fired -= HandleFired;
+            }
+        }
+
+        void HandleFired(PortalShot shot)
+        {
+            Vector3 start = viewModel
+                ? viewModel.Muzzle.position
+                : shot.origin + (shot.hitPoint - shot.origin).normalized * 0.5f;
+            PlayShot(start, shot.hitPoint, shot.color, shot.placed);
+        }
+
+        public void PlayShot(Vector3 start, Vector3 end, Color color, bool success)
+        {
+            StartCoroutine(PlayShotRoutine(start, end, color, success));
+        }
+
+        IEnumerator PlayShotRoutine(Vector3 start, Vector3 end, Color color, bool success)
+        {
+            GameObject shot = new GameObject(success ? "Portal Shot" : "Portal Shot Failed");
+            shot.transform.SetParent(transform, true);
+
+            // The line renderer is created per shot so overlapping rapid shots fade independently.
+            LineRenderer line = shot.AddComponent<LineRenderer>();
+            line.useWorldSpace = true;
+            line.positionCount = 2;
+            line.numCapVertices = 6;
+            line.alignment = LineAlignment.View;
+            line.textureMode = LineTextureMode.Stretch;
+            line.sharedMaterial = GetLineMaterial();
+
+            Light light = shot.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = color;
+            light.range = lightRange;
+
+            float width = success ? validWidth : invalidWidth;
+            float intensity = success ? validLightIntensity : invalidLightIntensity;
+            float distance = Vector3.Distance(start, end);
+            Vector3 direction = distance > 0.001f ? (end - start) / distance : transform.forward;
+            float visibleTrail = Mathf.Min(trailLength, Mathf.Max(0.2f, distance * 0.45f));
+
+            float elapsed = 0f;
+            while (elapsed < travelTime)
+            {
+                float t = Mathf.Clamp01(elapsed / travelTime);
+                float headDistance = Mathf.Lerp(0f, distance, t);
+                float tailDistance = Mathf.Max(0f, headDistance - visibleTrail);
+                Vector3 head = start + direction * headDistance;
+                Vector3 tail = start + direction * tailDistance;
+
+                SetLine(line, tail, head, color, width, success ? 1f : 0.75f);
+                light.transform.position = head;
+                light.intensity = intensity;
+
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            elapsed = 0f;
+            while (elapsed < fadeTime)
+            {
+                float t = Mathf.Clamp01(elapsed / fadeTime);
+                float alpha = 1f - t;
+                Vector3 tail = Vector3.Lerp(start, end, Mathf.Max(0f, 1f - visibleTrail / Mathf.Max(distance, 0.001f)));
+
+                SetLine(line, tail, end, color, width * alpha, alpha * (success ? 1f : 0.6f));
+                light.transform.position = end;
+                light.intensity = intensity * alpha;
+
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            Destroy(shot);
+        }
+
+        void SetLine(LineRenderer line, Vector3 start, Vector3 end, Color color, float width, float alpha)
+        {
+            Color visibleColor = WithAlpha(color, alpha);
+            line.startColor = visibleColor;
+            line.endColor = WithAlpha(Color.white, alpha);
+            line.widthMultiplier = width;
+            line.SetPosition(0, start);
+            line.SetPosition(1, end);
+        }
+
+        Material GetLineMaterial()
+        {
+            if (lineMaterial)
+            {
+                return lineMaterial;
+            }
+
+            Shader shader = Shader.Find("Sprites/Default");
+            if (!shader)
+            {
+                shader = Shader.Find("Unlit/Color");
+            }
+
+            lineMaterial = new Material(shader);
+            lineMaterial.name = "Portal Shot Line";
+            lineMaterial.hideFlags = HideFlags.DontSave;
+            return lineMaterial;
+        }
+
+        static Color WithAlpha(Color color, float alpha)
+        {
+            color.a = alpha;
+            return color;
+        }
+    }
+}

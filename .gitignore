@@ -23,6 +23,7 @@
 # Visual Studio cache directory
 .vs/
 .vscode/
+.idea/
 .codex
 UserSettings/
 
@@ -61,3 +62,10 @@ sysinfo.txt
 
 # Crashlytics generated file
 crashlytics-build.properties
+
+# Local design/planning docs
+/[Dd]ocs/
+
+# Local-only assets (video props etc.)
+/[Aa]ssets/_Local/
+/[Aa]ssets/_Local.meta

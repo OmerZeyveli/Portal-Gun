@@ -1,6 +1,6 @@
 # Portal Gun
 
-A first-person portal-shooter sandbox built in Unity, inspired by Valve's *Portal*. Shoot a blue and an orange portal on tagged surfaces, walk through, and carry your momentum.
+A first-person portal-shooter sandbox built in Unity, inspired by Valve's *Portal*. Shoot a blue and an orange portal on surfaces built from `PortalTile` prefabs on the portalable layer, walk through, and carry your momentum.
 
 <!-- TODO: replace with a gameplay GIF or screenshot -->
 <!-- ![Gameplay](docs/gameplay.gif) -->
@@ -8,6 +8,7 @@ A first-person portal-shooter sandbox built in Unity, inspired by Valve's *Porta
 ## Features
 
 - Real-time portal rendering ported from Sebastian Lague's open-source portal project.
+- Split into independent assemblies (`PortalKit.Core`, `.Gun`, `.VFX`, `.Samples`); Core has no dependencies, so you can take only the pieces you need.
 - Portal gun with beam VFX, open VFX, and a first-person view-model.
 - Tile-based, grid-snapped portal placement.
 - FPS controller with walk/run/jump and momentum carry-through portals.
@@ -18,6 +19,10 @@ A first-person portal-shooter sandbox built in Unity, inspired by Valve's *Porta
 - **Unity 2022.3.62f3**.
 - Built-in render pipeline.
 
+## Getting Started
+
+1. Clone the repository and open the folder with Unity 2022.3.62f3.
+2. Open `Assets/PortalKit/Samples/Scenes/Level 1.unity` and press Play.
 
 ## Controls
 
@@ -33,63 +38,74 @@ A first-person portal-shooter sandbox built in Unity, inspired by Valve's *Porta
 | Toggle player input | `O`              |
 | Pause editor (debug break) | `P`       |
 
-Portals will only land on surfaces built from the `PortalTile*` prefabs found under `Assets/Prefabs/PortalableTiles/`.
+Portals will only land on surfaces built from the `PortalTile*` prefabs found under `Assets/PortalKit/Gun/Prefabs/PortalableTiles/`.
 
 ## Project Structure
 
 ```
-Assets/
-├── Materials/        Shared materials (portal screens, palette colors, props)
-├── Models/           FBX meshes — portal frames and the portal-gun model
-├── Prefabs/          Player, portals, physics cube, lamp, portalable tiles
-├── Scenes/Level 1    The playable scene
-├── Scripts/
-│   ├── Portal Core/  Portal rendering, traveller, camera, shaders (Lague-derived)
-│   └── Portal Game/  Portal gun, FPS controller, VFX, tile/grid, physics objects
-└── Settings/         Lighting settings asset
+Assets/PortalKit/
+├── Core/     Portals only: rendering, travel, slicing, PortalAperture, PortalTransformUtility
+├── Gun/      Portal gun + tile/grid placement (depends on Core)
+├── VFX/      Optional effects: rim, open burst, beam, gun view model, crosshair (depends on Core, Gun)
+├── Samples/  Level 1, FPS player, physics cube (depends on everything)
+└── Tests/    EditMode tests for the travel math and aperture mesh
 ```
 
-## Using in Your Own Game
+Each folder is its own assembly. Dependencies only point up this list (Gun uses Core, VFX uses Core and Gun), so Core never depends on the gun or the effects.
 
-The portal mechanic is decoupled from the included player. Three pieces: a portal grid, a traveller (your player), and a portal gun.
+## Using PortalKit in Your Own Game
 
-**1. Copy what you need**
+### Portals only
 
-- `Assets/Scripts/Portal Core/` and `Assets/Scripts/Portal Game/`
-- `Assets/Prefabs/BluePortal.prefab`, `OrangePortal.prefab`, `PortalableTiles/`
-- `Assets/Materials/Portal Screen.mat`, `Portal Stone.mat`
+1. Copy `Assets/PortalKit/Core`.
+2. Drop `Core/Prefabs/Portal.prefab` into the scene twice and set each one's **Linked Portal** to the other.
+3. Add **Portal Renderer** to your main camera.
+4. Add **Portal Traveller** (or a subclass) to every object that should pass through, and set its **Graphics Object**. Use the `Slice` shader on its materials so it is cut cleanly at the portal.
+5. Moving a portal from code: call `portal.PlaceAt(position, rotation)`.
 
-The included `Player.prefab`, `Lamp.prefab`, `Physics Cube.prefab`, and `Level 1` are examples — skip them if you don't need them.
+- A traveller also needs a `Collider` (or `CharacterController`) so the portal's trigger can detect it.
+- Portals find the player camera via `Camera.main`, so that camera needs the `MainCamera` tag and a `PortalRenderer` component.
 
-**2. Set up the scene**
+### Your own character controller
 
-- Add a `PortalGrid` component on an empty GameObject (one per scene).
-- Build portal-able surfaces with the `PortalTile*` prefabs. Other surfaces block shots but reject portals.
-- Drop `BluePortal.prefab` and `OrangePortal.prefab` off-screen — they're teleported in on fire.
-
-**3. Make your player a traveller**
-
-- Add `PortalTraveller` to the player root and assign `Graphics Object` to its visual mesh root.
-- Player needs a `Rigidbody` and `Collider`.
-- For momentum carry, override `PortalTraveller.Teleport()` — see [`FPSController.cs`](Assets/Scripts/Portal Game/FPSController.cs).
-
-**4. Attach the portal gun**
-
-Add `PortalGun` anywhere in the player hierarchy and assign:
-
-- `Cam` (defaults to `Camera.main`)
-- `Portalable Mask` — layer of your `PortalTile*` surfaces
-- `Blue Portal` / `Orange Portal` — your two portal instances
-
-Turn off `Auto Create Visuals` / `Show Crosshair` if you have your own.
-
-**5. Drive firing from your own input**
+Override `PortalTraveller.Teleport` and use `PortalTransformUtility`:
 
 ```csharp
-gun.inputEnabled = false;   // disable built-in mouse handling
-gun.FireBlue();
-gun.FireOrange();
+public override void Teleport(Transform fromPortal, Transform toPortal, Vector3 pos, Quaternion rot)
+{
+    transform.position = pos;
+    Quaternion mapped = PortalTransformUtility.TransformRotation(fromPortal, toPortal, cameraTransform.rotation);
+    UprightLook look = PortalTransformUtility.ClosestUprightLook(mapped, pitchLimits);
+    // Apply look.yaw / look.pitch to your controller; ease look.residual to identity over a few frames.
+    velocity = PortalTransformUtility.TransformDirection(fromPortal, toPortal, velocity);
+}
 ```
+
+`Samples/Scripts/FPSController.cs` is a complete example.
+
+### Adding the portal gun
+
+1. Also copy `Assets/PortalKit/Gun`.
+2. Add a `PortalGrid` to the scene and build portal-able surfaces from `Gun/Prefabs/PortalableTiles`.
+3. Add `PortalGun` under your camera and assign the two portals, `Portalable Mask` and `Shot Mask`.
+4. React to shots from your own code with `gun.Fired += shot => ...`, or poll `gun.CanPlace(slot)`.
+
+- To drive firing from your own input instead of the built-in mouse handling, set `gun.inputEnabled = false` and call `gun.FireBlue()` / `gun.FireOrange()` (or `gun.Fire(PortalSlot.Blue)`).
+
+### Adding the effects
+
+1. Also copy `Assets/PortalKit/VFX`.
+2. Put `PortalShotVfx` and `PortalCrosshair` on the gun's GameObject, `PortalGunViewModel` on the gun model under it, and `PortalRim` + `PortalOpenVfx` on each portal. They find the gun/portal themselves.
+
+- `PortalGunViewModel` expects a layer named `ViewModel`; without it, it logs a warning and the gun model can clip into walls.
+
+### Removing the effects
+
+Delete `Assets/PortalKit/VFX` (and `Samples`, which uses them). Core and Gun still compile and work.
+
+## Running the Tests
+
+Open **Window → General → Test Runner**, select **EditMode** and press **Run All**. The tests cover the portal travel math (`PortalTransformUtility`), the aperture mesh and `Portal.PlaceAt`.
 
 ## Credits
 
