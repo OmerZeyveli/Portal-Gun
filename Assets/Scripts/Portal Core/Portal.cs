@@ -262,7 +262,8 @@ public class Portal : MonoBehaviour {
             }
 
             // Ensure clone is properly sliced, in case it's visible through this portal:
-            int cloneSideOfLinkedPortal = -SideOfPortal (traveller.transform.position);
+            // Flip180Y: the visible part of the clone is on the same side number as the traveller.
+            int cloneSideOfLinkedPortal = SideOfPortal (traveller.transform.position);
             bool camSameSideAsClone = linkedPortal.SideOfPortal (portalCamPos) == cloneSideOfLinkedPortal;
             if (camSameSideAsClone) {
                 traveller.SetSliceOffsetDst (screenThickness, true);
@@ -276,7 +277,7 @@ public class Portal : MonoBehaviour {
             var travellerPos = linkedTraveller.graphicsObject.transform.position;
             var clonePos = linkedTraveller.graphicsClone.transform.position;
             // Handle clone of linked portal coming through this portal:
-            bool cloneOnSameSideAsCam = linkedPortal.SideOfPortal (travellerPos) != SideOfPortal (portalCamPos);
+            bool cloneOnSameSideAsCam = linkedPortal.SideOfPortal (travellerPos) == SideOfPortal (portalCamPos);
             if (cloneOnSameSideAsCam) {
                 // Addresses issue 1
                 linkedTraveller.SetSliceOffsetDst (hideDst, true);
@@ -331,9 +332,11 @@ public class Portal : MonoBehaviour {
 
     void UpdateSliceParams (PortalTraveller traveller) {
         // Calculate slice normal
+        // Flip180Y maps side s of this portal to side -s of the linked portal, so the part that has
+        // already crossed (side -s here) appears on side s of the linked portal.
         int side = SideOfPortal (traveller.transform.position);
         Vector3 sliceNormal = transform.forward * -side;
-        Vector3 cloneSliceNormal = linkedPortal.transform.forward * side;
+        Vector3 cloneSliceNormal = linkedPortal.transform.forward * -side;
 
         // Calculate slice centre
         Vector3 slicePos = transform.position;
@@ -348,7 +351,7 @@ public class Portal : MonoBehaviour {
         if (!playerSameSideAsTraveller) {
             sliceOffsetDst = -screenThickness;
         }
-        bool playerSameSideAsCloneAppearing = side != linkedPortal.SideOfPortal (playerCam.transform.position);
+        bool playerSameSideAsCloneAppearing = side == linkedPortal.SideOfPortal (playerCam.transform.position);
         if (!playerSameSideAsCloneAppearing) {
             cloneSliceOffsetDst = -screenThickness;
         }
